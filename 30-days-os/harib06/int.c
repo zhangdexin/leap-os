@@ -1,45 +1,45 @@
-/* ���荞�݊֌W */
+/* 割り込み関係 */
 
 #include "bootpack.h"
 #include <stdio.h>
 
-// PIC�I�񑶊퐥8��
-// IMR(interrupt mask register)���f�����񑶊�C�^�꘢�u?1�C?��IRQ�M������
-// ICW(initial control word)���n���T�������CICW�L�l���CICW1�aICW4�^PIC��z?�����C���f�M��?��������?�C?�u?�Œ�?
-// ICW3�L?�嘸?��?��C��O����IRQ2?�ژ�PIC
-// ICW2�r��IRQ��?�ꍆ���f�ʒmCPU
-// INT 0x00~0x0f�p�ȕۏ�?�p����?����n?�������C���ڐG??���f
-// IRQ1��??�CIRQ12���l?
+// PIC的寄存器是8位
+// IMR(interrupt mask register)中断屏蔽寄存器，某一个置为1，这个IRQ信号屏蔽
+// ICW(initial control word)初始化控制数据，ICW有四个，ICW1和ICW4与PIC主板配?方式，中断信号?气特性相?，?置?固定?
+// ICW3有关主从连接设定，第三个即IRQ2连接从PIC
+// ICW2决定IRQ以?一号中断通知CPU
+// INT 0x00~0x0f用以保障应用程序对操作系统干坏事，直接触发该中断
+// IRQ1是键盘，IRQ12是鼠标
 void init_pic(void)
-/* PIC�I���n�� */
+/* PIC的初始化 */
 {
-	io_out8(PIC0_IMR,  0xff  ); /* �֎~���L���f */
-	io_out8(PIC1_IMR,  0xff  ); /* �֎~���L���f */
+	io_out8(PIC0_IMR,  0xff  ); /* 禁止所有中断 */
+	io_out8(PIC1_IMR,  0xff  ); /* 禁止所有中断 */
 
-	io_out8(PIC0_ICW1, 0x11  ); /* ?���G?�͎� */
-	io_out8(PIC0_ICW2, 0x20  ); /* IRQ0-7�RINT20-27�ڝ� */
-	io_out8(PIC0_ICW3, 1 << 2); /* PIC0�^IRQ2?��?�� */
-	io_out8(PIC0_ICW4, 0x01  ); /* ��?�t�͎� */
+	io_out8(PIC0_ICW1, 0x11  ); /* 边沿触发模式 */
+	io_out8(PIC0_ICW2, 0x20  ); /* IRQ0-7由INT20-27接收 */
+	io_out8(PIC0_ICW3, 1 << 2); /* PIC0与IRQ2连接设定 */
+	io_out8(PIC0_ICW4, 0x01  ); /* 无缓冲模式 */
 
-	io_out8(PIC1_ICW1, 0x11  ); /* ?���G?�͎� */
-	io_out8(PIC1_ICW2, 0x28  ); /* IRQ8-15�RINT28-2f�ڝ� */
-	io_out8(PIC1_ICW3, 2     ); /* PIC1�^IRQ2?��?�� */
-	io_out8(PIC1_ICW4, 0x01  ); /* ��?��?�t�͎� */
+	io_out8(PIC1_ICW1, 0x11  ); /* 边沿触发模式 */
+	io_out8(PIC1_ICW2, 0x28  ); /* IRQ8-15由INT28-2f接收 */
+	io_out8(PIC1_ICW3, 2     ); /* PIC1与IRQ2连接设定 */
+	io_out8(PIC1_ICW4, 0x01  ); /* 无缓冲模式 */
 
-	io_out8(PIC0_IMR,  0xfb  ); /* 11111011 PIC1�ȊO�S���֎~ */
-	io_out8(PIC1_IMR,  0xff  ); /* 11111111 �֎~���L���f */
+	io_out8(PIC0_IMR,  0xfb  ); /* 11111011 PIC1以外全部禁止 */
+	io_out8(PIC1_IMR,  0xff  ); /* 11111111 禁止所有中断 */
 
 	return;
 }
 
 void inthandler27(int *esp)
-/* PIC0����̕s���S���荞�ݑ΍� */
-/* Athlon64X2�@�Ȃǂł̓`�b�v�Z�b�g�̓s���ɂ��PIC�̏��������ɂ��̊��荞�݂�1�x���������� */
-/* ���̊��荞�ݏ����֐��́A���̊��荞�݂ɑ΂��ĉ������Ȃ��ł��߂��� */
-/* �Ȃ��������Ȃ��Ă����́H
-	��  ���̊��荞�݂�PIC���������̓d�C�I�ȃm�C�Y�ɂ���Ĕ����������̂Ȃ̂ŁA
-		�܂��߂ɉ����������Ă��K�v���Ȃ��B									*/
+/* PIC0からの不完全割り込み対策 */
+/* Athlon64X2機などではチップセットの都合によりPICの初期化時にこの割り込みが1度だけおこる */
+/* この割り込み処理関数は、その割り込みに対して何もしないでやり過ごす */
+/* なぜ何もしなくていいの？
+	→  この割り込みはPIC初期化時の電気的なノイズによって発生したものなので、
+		まじめに何か処理してやる必要がない。									*/
 {
-	io_out8(PIC0_OCW2, 0x67); /* IRQ-07��t������PIC�ɒʒm */
+	io_out8(PIC0_OCW2, 0x67); /* IRQ-07受付完了をPICに通知 */
 	return;
 }

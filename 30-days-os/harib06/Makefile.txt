@@ -1,4 +1,4 @@
-OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj \
+﻿OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj \
 		int.obj fifo.obj keyboard.obj mouse.obj
 
 TOOLPATH = ../z_tools/
@@ -50,6 +50,7 @@ haribote.img : ipl10.bin haribote.sys Makefile
 		copy from:haribote.sys to:@: \
 		imgout:haribote.img
 
+# 堦斒婯懃
 %.gas : %.c bootpack.h Makefile
 	$(CC1) -o $*.gas $*.c
 

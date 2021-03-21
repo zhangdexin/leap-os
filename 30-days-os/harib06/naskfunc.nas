@@ -1,11 +1,11 @@
-﻿; naskfunc
+; naskfunc
 ; TAB=4
 
 ; intel家族
 ; 8086->80186->286->386->486->Pentium->PentiumPro->PentiumII
 ; 286的CPUcpu地址总线还是16位  386开始CPU地址总线就是32位
 
-[FORMAT "WCOFF"]				; �����?�����I�͎�
+[FORMAT "WCOFF"]
 [INSTRSET "i486p"]				; 使用486的语言，避免EAX当成标签
 [BITS 32]						; 位数是32位
 
