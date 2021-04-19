@@ -1,0 +1,140 @@
+#include "bootpack.h"
+
+
+struct SHTCTL* shtctl_init(struct MEMMAN* memman, unsigned char* vram, int xsize, int ysize) {
+	struct SHTCTL* ctl;
+	int i;
+	
+	// 分配图层管理的内存空间
+	ctl = (struct SHTCTL*) memman_alloc_4k(memman, sizeof(struct SHTCTL));
+	if (ctl == 0) {
+		return ctl;
+	}
+	
+	ctl->vram = vram;
+	ctl->xsize = xsize;
+	ctl->ysize = ysize;
+	ctl->top = -1; // 一个sheet也没有
+	for (i = 0; i < MAX_SHEETS; i++) {
+		ctl->sheets0[i].flags = 0; // 标记为未使用
+	}
+	
+	return ctl;
+}
+
+struct SHEET* sheet_alloc(struct SHTCTL* ctl) {
+	struct SHEET* sht;
+	int i;
+	for (i = 0; i < MAX_SHEETS; i++) {
+		if (ctl->sheets0[i].flags == 0) {
+			sht = &ctl->sheets0[i];
+			sht->flags = SHEET_USE; // 标记为正在使用
+			sht->height = -1; // 隐藏
+			return sht;
+		}
+	}
+	
+	return 0; // 所有的SHEET都处于使用状态
+}
+
+// 设置sheet的变量
+void sheet_setbuf(struct SHEET* sht, unsigned char* buf, int xsize, int ysize, int col_inv) {
+	sht->buf = buf;
+	sht->bxsize = xsize;
+	sht->bysize = ysize;
+	sht->col_inv = col_inv;
+}
+
+void sheet_updown(struct SHTCTL* ctl, struct SHEET* sht, int height) {
+	int h, old = sht->height; // 存储射之前的高度信息
+	
+	// 如果指定的高度过高或过低，进行修正
+	if (height > ctl->top + 1) {
+		height = ctl->top + 1;
+	}
+	
+	if (height < -1) {
+		height = -1;
+	}
+	
+	sht->height = height;
+	
+	// 设置完高度，然后对sheets[]重新排列
+	if (old > height) { // 比之前高度低
+		if (height >= 0) {
+			for (h = old; h > height; h--) {
+				ctl->sheets[h] = ctl->sheets[h - 1];
+				ctl->sheets[h]->height = h;
+			}
+			ctl->sheets[height] = sht;
+		}
+		else { // 设置该图层隐藏
+			// 将该图层以上的图层下降一个层
+			for (h = old; h < ctl->top; h++) {
+				ctl->sheets[h] = ctl->sheets[h + 1];
+				ctl->sheets[h]->height = h;
+			}
+			ctl->top--; // 有一个图层隐藏，显示图层减少一个，最大高度减一
+		}
+		sheet_refresh(ctl); // 刷新画面
+	}
+	else if (old < height) { // 比之前高度高
+		if (old >= 0) { // old和height之间的图层降1
+			for (h = old; h < height; h++) {
+				ctl->sheets[h] = ctl->sheets[h + 1];
+				ctl->sheets[h]->height = h;
+			}
+			ctl->sheets[height] = sht;
+		}
+		else { // 由隐藏变为显示，height高度及以上图层升高1
+			for (h = ctl->top; h >= height; h--) {
+				ctl->sheets[h + 1] = ctl->sheets[h];
+				ctl->sheets[h + 1]->height = h + 1;
+			}
+			ctl->sheets[height] = sht;
+			ctl->top++; // 图层加1
+		}
+		sheet_refresh(ctl); // 刷新画面
+	}
+}
+
+void sheet_refresh(struct SHTCTL* ctl) {
+	int h, bx, by, vx, vy;
+	unsigned char* buf, c, *vram = ctl->vram;
+	struct SHEET* sht;
+	
+	for (h = 0; h <= ctl->top; h++) {
+		sht = ctl->sheets[h];
+		buf = sht->buf;
+		for (by = 0; by < sht->bysize; by++) {
+			vy = sht->vy0 + by;
+			for (bx = 0; bx < sht->bxsize; bx++) {
+				vx = sht->vx0 + bx;
+				c = buf[by * sht->bxsize + bx];
+				if (c != sht->col_inv) {
+					vram[vy * ctl->xsize + vx] = c;
+				}
+			}
+		}
+	}
+}
+
+// 滑动
+void sheet_slide(struct SHTCTL* ctl, struct SHEET* sht, int vx0, int vy0) {
+	sht->vx0 = vx0;
+	sht->vy0 = vy0;
+	
+	// 判断是否是显示的图层
+	if (sht->height >= 0) {
+		sheet_refresh(ctl);
+	}
+}
+
+// 释放sht
+void sheet_free(struct SHTCTL* ctl, struct SHEET* sht) {
+	if (sht->height >= 0) {
+		sheet_updown(ctl, sht, -1); // 显示状态下，设定为隐藏
+	}
+	
+	sht->flags = 0;
+}

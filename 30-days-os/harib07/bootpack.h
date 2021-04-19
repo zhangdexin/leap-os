@@ -140,8 +140,7 @@ int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 extern struct FIFO8 mousefifo;
 
 
-/* memory.c */
-
+/* memory.c 内存管理 */
 #define MEMMAN_FREES 4090	/* free[]大约32KB(8 * 4090) */
 #define MEMMAN_ADDR	 0x003c0000 // 内存信息表存放在0x003c0000
 
@@ -150,7 +149,7 @@ struct FREEINFO {
 	unsigned int addr, size;
 };
 
-// 内存管理
+// 内存管理器
 struct MEMMAN {
 	int frees, maxfrees, lostsize, losts;
 	struct FREEINFO free[MEMMAN_FREES];
@@ -163,3 +162,36 @@ unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);
 int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size);
 unsigned int memman_alloc_4k(struct MEMMAN *man, unsigned int size);
 int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size);
+
+
+
+
+/* sheet.c 图层管理*/
+#define MAX_SHEETS  256
+#define SHEET_USE   1
+
+// 透明图层
+struct SHEET {
+	unsigned char* buf; // 描述的内容地址
+	int bxsize, bysize, // 长宽
+	vx0, vy0,           // 位置坐标，v(VRAM)
+	col_inv,            // 透明色色号
+	height,             // 图层高度(指所在的图层数吧)
+	flags;              // 设定信息
+};
+
+// 图层管理
+struct SHTCTL {
+	unsigned char* vram; // vram、xsize、ysize代表VRAM的地址和画面的大小
+	int xsize, ysize, top; // top代表最上层图层的高度
+	struct SHEET* sheets[MAX_SHEETS]; // 有序存放要显示的图层地址
+	struct SHEET sheets0[MAX_SHEETS]; // 图层信息
+};
+
+void sheet_free(struct SHTCTL* ctl, struct SHEET* sht);
+void sheet_slide(struct SHTCTL* ctl, struct SHEET* sht, int vx0, int vy0);
+void sheet_refresh(struct SHTCTL* ctl);
+void sheet_updown(struct SHTCTL* ctl, struct SHEET* sht, int height);
+void sheet_setbuf(struct SHEET* sht, unsigned char* buf, int xsize, int ysize, int col_inv);
+struct SHEET* sheet_alloc(struct SHTCTL* ctl);
+struct SHTCTL* shtctl_init(struct MEMMAN* memman, unsigned char* vram, int xsize, int ysize);
