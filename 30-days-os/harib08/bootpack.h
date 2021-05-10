@@ -183,7 +183,7 @@ struct SHEET {
 
 // 图层管理
 struct SHTCTL {
-	unsigned char* vram; // vram、xsize、ysize代表VRAM的地址和画面的大小
+	unsigned char* vram, *map; // vram、xsize、ysize代表VRAM的地址和画面的大小, map表示画面上每个点是哪个图层
 	int xsize, ysize, top; // top代表最上层图层的高度
 	struct SHEET* sheets[MAX_SHEETS]; // 有序存放要显示的图层地址
 	struct SHEET sheets0[MAX_SHEETS]; // 图层信息

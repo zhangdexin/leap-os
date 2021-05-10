@@ -24,15 +24,15 @@
 
 [SECTION .text]
 
-_io_hlt:	; void io_hlt(void);
+_io_hlt:	; void io_hlt(void); 暂停cpu
 		HLT
 		RET
 
-_io_cli:	; void io_cli(void);
+_io_cli:	; void io_cli(void); 禁止中断
 		CLI
 		RET
 
-_io_sti:	; void io_sti(void);
+_io_sti:	; void io_sti(void); 允许中断
 		STI
 		RET
 

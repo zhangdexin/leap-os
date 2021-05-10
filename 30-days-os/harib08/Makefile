@@ -77,7 +77,6 @@ clean :
 	-$(DEL) *.obj
 	-$(DEL) bootpack.map
 	-$(DEL) bootpack.bim
-	-$(DEL) bootpack.img
 	-$(DEL) bootpack.hrb
 	-$(DEL) haribote.sys
 	-$(DEL) haribote.img
