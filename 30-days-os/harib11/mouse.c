@@ -12,7 +12,7 @@ void inthandler2c(int* esp)
 	io_out8(PIC1_OCW2, 0x64);	/* 通知PIC1 IRQ-12受理完成 */
 	io_out8(PIC0_OCW2, 0x62);	/* 通知PIC0 IRQ-02受理完成 */
 	data = io_in8(PORT_KEYDAT);
-	fifo32_put(&mousefifo, data);
+	fifo32_put(mousefifo, data + mousedata0);
 	return;
 }
 
