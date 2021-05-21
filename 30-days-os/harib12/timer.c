@@ -42,6 +42,7 @@ void inthandler20(int *esp)
 {
     int i;
     struct TIMER* timer;
+    char ts = 0;
 
 	io_out8(PIC0_OCW2, 0x60);	/* 通知PIC"IRQ-00"已经受理完成 */
     timerctl.count++;
@@ -56,15 +57,23 @@ void inthandler20(int *esp)
         }
         
         timer->flags = TIMER_FLAGS_ALLOC;
-        fifo32_put(timer->fifo, timer->data);
+        if (timer != mt_timer) {
+            fifo32_put(timer->fifo, timer->data);
+        }
+        else {
+            ts = 1; // mt_timer超时
+        }
         timer = timer->next;
     }
 
     // 有i个定时器超时了, 其余进行移位
-    timerctl.using -= i;
     timerctl.t0 = timer;
-
     timerctl.next = timerctl.t0->timeout;
+
+    if (ts != 0) {
+        mt_taskswitch();
+    }
+
 	return;
 }
 

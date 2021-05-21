@@ -81,27 +81,40 @@ void putfonts8_asc_sht(struct SHEET* sht, int x, int y, int c, int b, char* s, i
 }
 
 // taskb的入口
-void task_b_main(void)
+// 不能return，同样HariMain也不可retun
+void task_b_main(struct SHEET* sht_back)
 {
 	struct FIFO32 fifo;
-	struct TIMER *timer;
-	int i, fifobuf[128];
+	struct TIMER *timer_ls, *timer_put;
+	char s[11];
+	int i, fifobuf[128], count = 0, count0 = 0;
 
 	fifo32_init(&fifo, 128, fifobuf);
-	timer = timer_alloc();
-	timer_init(timer, &fifo, 1);
-	timer_settime(timer, 500);
+	timer_ls = timer_alloc();
+	timer_init(timer_ls, &fifo, 100);
+	timer_settime(timer_ls, 100);
+	timer_put = timer_alloc();
+	timer_init(timer_put, &fifo, 1);
+	timer_settime(timer_put, 1);
 
 	for (;;) {
+		count++;
 		io_cli();
 		if (fifo32_status(&fifo) == 0) {
 			io_sti();
-			io_hlt();
 		} else {
 			i = fifo32_get(&fifo);
 			io_sti();
-			if (i == 1) { /* 超时时间为5s */
-				taskswitch3(); /* 返回任务A */
+			if (i == 1) {
+				sprintf(s, "%11d", count);
+				putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_008484, s, 11);
+				timer_settime(timer_put, 1);
+			}
+			else if (i == 100) {
+				sprintf(s, "%11d", count - count0);
+				putfonts8_asc_sht(sht_back, 0, 128, COL8_FFFFFF, COL8_008484, s, 11);
+				count0 = count;
+				timer_settime(timer_ls, 100);
 			}
 		}
 	}
@@ -225,7 +238,8 @@ void HariMain(void)
 	load_tr(3 * 8); // 段号*8，写入tr(任务寄存器)
 
 	 // 为任务b申请64K执行栈,并esp调整到栈尾部
-	task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024;
+	task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
+    *((int *) (task_b_esp + 4)) = (int) sht_back;
 	tss_b.eip = (int) &task_b_main; // 从哪里开始执行
 	tss_b.eflags = 0x00000202; /* IF = 1;io_load_eflags的值 */
 	tss_b.eax = 0;
@@ -236,6 +250,7 @@ void HariMain(void)
 	tss_b.ebp = 0;
 	tss_b.esi = 0;
 	tss_b.edi = 0;
+	
 
 	// cs(代码段寄存器)置为GDT的2号，其他寄存器都置为GDT的1号
 	// 使用了和bootpack.c相同的地址段???
@@ -245,6 +260,7 @@ void HariMain(void)
 	tss_b.ds = 1 * 8;
 	tss_b.fs = 1 * 8;
 	tss_b.gs = 1 * 8;
+	mt_init();
 
 	// sheet_refresh改为局部刷新时，需要多次调用
 	for (;;) {
@@ -316,7 +332,6 @@ void HariMain(void)
 			} 
 			else if (i == 10) { // 10s定时器
 				putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
-				taskswitch4();
 			} 
 			else if (i == 3) { // 3s定时器
 				putfonts8_asc_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
