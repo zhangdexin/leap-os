@@ -40,7 +40,6 @@ void init_pit() {
 // 0x60+IRQ号码输出给OCW2表示某个IRQ处理完成
 void inthandler20(int *esp)
 {
-    int i;
     struct TIMER* timer;
     char ts = 0;
 
