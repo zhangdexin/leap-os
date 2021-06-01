@@ -264,3 +264,32 @@ void timer_free(struct TIMER* timer);
 void timer_init(struct TIMER* timer, struct FIFO32* fifo, int data);
 void timer_settime(struct TIMER* timer, unsigned int timeout);
 extern struct TIMERCTL timerctl;
+
+
+/* window.c */
+void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
+void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);
+void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
+void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
+
+/* console.c */
+void console_task(struct SHEET *sheet, unsigned int memtotal);
+int cons_newline(int cursor_y, struct SHEET *sheet);
+
+/* file.c */
+// 加载img文件中的文件名信息，0x002600字节开始
+// name:文件名，如果第一个字节0xe5,表示文件已经删除，如果是0x00, 表示不包含文件名信息
+// ext: 文件扩展名
+// type: 文件属性信息
+// reserve: 保留信息
+// time, date: 时间信息
+// clustno: 簇号，代表这个文件的内容从磁盘的哪个扇区开始存放，相差一个clustno即相差一个扇区(0x003e00为内容所在位置)
+// size: 文件大小
+struct FILEINFO {
+	unsigned char name[8], ext[3], type;
+	char reserve[10];
+	unsigned short time, date, clustno;
+	unsigned int size;
+};
+void file_readfat(int *fat, unsigned char *img);
+void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);
