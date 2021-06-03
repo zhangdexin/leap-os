@@ -31,7 +31,7 @@ void asm_inthandler2c(void);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 //void taskswitch4(void);
 void farjmp(int eip, int cs);
-
+void farcall(int eip, int cs);
 
 /* memory.c 内存管理 */
 #define MEMMAN_FREES 4090	/* free[]大约32KB(8 * 4090) */

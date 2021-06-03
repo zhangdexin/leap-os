@@ -22,7 +22,10 @@
 		GLOBAL	_asm_inthandler20, _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp
+		GLOBAL  _farcall
+		GLOBAL  _asm_cons_putchar
 		EXTERN	_inthandler20, _inthandler21, _inthandler27, _inthandler2c
+		EXTERN  _cons_putchar
 
 [SECTION .text]
 
@@ -221,6 +224,23 @@ mts_fin:
 ;		JMP		4*8:0  
 ;		RET
 
+; JMP FAR”指令的功能是执行far跳转。在JMP FAR指令中，可以指定一个内存地址，
+; CPU会从指定的内存地址中读取4个字节的数据，
+; 并将其存入EIP寄存器，再继续读取2个字节的数据，并将其存入CS寄存器
 _farjmp:		; void farjmp(int eip, int cs);
 		JMP		FAR	[ESP+4]				; eip, cs
 		RET
+
+; 不同段的函数调用, 形式同_farjmp
+_farcall:       ; void farcall(int eip, int cs);
+		CALL    FAR [ESP+4]             ; eip, cs
+		RET
+
+_asm_cons_putchar:
+		PUSH	1
+		AND		EAX,0xff	; 将AH和EAX的高位置0
+		PUSH	EAX         ; 将EAX置为已存入字符编码的状态
+		PUSH	DWORD [0x0fec]	; 读取内存并push该值
+		CALL	_cons_putchar
+		ADD		ESP,12		; 栈中数据丢弃
+		RETF
