@@ -23,9 +23,9 @@
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp
 		GLOBAL  _farcall
-		GLOBAL  _asm_cons_putchar
+		GLOBAL	_asm_hrb_api
 		EXTERN	_inthandler20, _inthandler21, _inthandler27, _inthandler2c
-		EXTERN  _cons_putchar
+		EXTERN  _hrb_api
 
 [SECTION .text]
 
@@ -236,11 +236,25 @@ _farcall:       ; void farcall(int eip, int cs);
 		CALL    FAR [ESP+4]             ; eip, cs
 		RET
 
-_asm_cons_putchar:
-		PUSH	1
-		AND		EAX,0xff	; 将AH和EAX的高位置0
-		PUSH	EAX         ; 将EAX置为已存入字符编码的状态
-		PUSH	DWORD [0x0fec]	; 读取内存并push该值
-		CALL	_cons_putchar
-		ADD		ESP,12		; 栈中数据丢弃
-		RETF
+;_asm_cons_putchar:
+;		STI                 ; INT调用时，对于CPU来说相当于执行了中断处理程序，
+;		                    ; 因此在调用的同时CPU会自动执行CLI指令来禁止中断请求, 我们使用STI允许中断
+;		PUSHAD
+;		PUSH	1
+;		AND		EAX,0xff	; 将AH和EAX的高位置0
+;		PUSH	EAX         ; 将EAX置为已存入字符编码的状态
+;		PUSH	DWORD [0x0fec]	; 读取内存并push该值
+;		CALL	_cons_putchar
+;		ADD		ESP,12		; 栈中数据丢弃
+;		POPAD
+;		IRETD               ; 使用INT调用时返回
+
+
+_asm_hrb_api:
+		STI
+		PUSHAD	; 用于保存寄存器的值
+		PUSHAD	; 用于向hrb_api传值的PUSH
+		CALL	_hrb_api
+		ADD		ESP,32
+		POPAD
+		IRETD
