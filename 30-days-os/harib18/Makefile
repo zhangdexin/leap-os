@@ -54,7 +54,14 @@ a.bim: a.obj a_nask.obj Makefile
 a.hrb: a.bim Makefile
 	$(BIM2HRB) a.bim a.hrb 0
 
-haribote.img : ipl10.bin haribote.sys hello.hrb a.hrb Makefile
+crack1.bim : crack1.obj Makefile
+	$(OBJ2BIM) @$(RULEFILE) out:crack1.bim map:crack1.map crack1.obj
+
+crack1.hrb : crack1.bim Makefile
+	$(BIM2HRB) crack1.bim crack1.hrb 0
+
+haribote.img : ipl10.bin haribote.sys Makefile \
+		crack1.hrb hello.hrb a.hrb
 	$(EDIMG)   imgin:../z_tools/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0 \
 		copy from:haribote.sys to:@: \
@@ -62,6 +69,7 @@ haribote.img : ipl10.bin haribote.sys hello.hrb a.hrb Makefile
 		copy from:make.bat to:@: \
 		copy from:hello.hrb to:@: \
 		copy from:a.hrb to:@: \
+		copy from:crack1.hrb to:@: \
 		imgout:haribote.img
 
 %.gas : %.c bootpack.h Makefile

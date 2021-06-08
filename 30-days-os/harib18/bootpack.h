@@ -28,6 +28,7 @@ void asm_inthandler20(void);
 void asm_inthandler21(void);
 void asm_inthandler27(void);
 void asm_inthandler2c(void);
+void asm_inthandler0d(void);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 //void taskswitch4(void);
 void farjmp(int eip, int cs);
@@ -280,6 +281,7 @@ struct CONSOLE {
 };
 
 void console_task(struct SHEET *sheet, unsigned int memtotal);
+int inthandler0d(int *esp);
 
 /* file.c */
 // 加载img文件中的文件名信息，0x002600字节开始
