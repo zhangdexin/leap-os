@@ -34,6 +34,7 @@ unsigned int memtest_sub(unsigned int start, unsigned int end);
 void farjmp(int eip, int cs);
 void farcall(int eip, int cs);
 void asm_hrb_api();
+void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 
 /* memory.c 内存管理 */
 #define MEMMAN_FREES 4090	/* free[]大约32KB(8 * 4090) */
@@ -281,7 +282,8 @@ struct CONSOLE {
 };
 
 void console_task(struct SHEET *sheet, unsigned int memtotal);
-int inthandler0d(int *esp);
+int* inthandler0d(int *esp);
+int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 
 /* file.c */
 // 加载img文件中的文件名信息，0x002600字节开始
