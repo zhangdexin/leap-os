@@ -153,6 +153,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char* cmdline)
 	char name[18], *p, *q;
 	int i;
 	struct TASK *task = task_now();
+	int segsiz, datsiz, esp, dathrb;
 
 	/* 根据命令行生成名字 */
 	for (i = 0; i < 13; i++) {
@@ -176,32 +177,31 @@ int cmd_app(struct CONSOLE *cons, int *fat, char* cmdline)
 	if (finfo != 0) {
 		/* 找到文件信息 */
 		p = (char *) memman_alloc_4k(memman, finfo->size);
-		q = (char *) memman_alloc_4k(memman, 64 * 1024); // 应用程序专用的内存空间
-		*((int*)0xfe8) = (int)p;
-		
 		file_loadfile(finfo->clustno, finfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
-		// AR_CODE32_ER + 0x60 表示应用程序运行起见如果段寄存器存入操作系统段会发生异常
-		set_segmdesc(gdt + 1003, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60); // 应用程序代码段
-		set_segmdesc(gdt + 1004, 64 * 1024 - 1, (int) q, AR_DATA32_RW + 0x60); // 应用程序数据段
-		// [BITS 32]
-		//     CALL 0x1b
-		//     RETF
-		// 调用C语言写的app程序入口函数
-		if (finfo->size >= 8 && strncmp(p + 4, "Hari", 4) == 0) {
-			p[0] = 0xe8;
-			p[1] = 0x16;
-			p[2] = 0x00;
-			p[3] = 0x00;
-			p[4] = 0x00;
-			p[5] = 0xcb;
-		}
-		
-		start_app(0, 1003 * 8, 64 * 1024, 1004 * 8, &(task->tss.esp0));
+		// 0x0004中存放的是“Hari”这4个字节
+		if (finfo->size >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0x00) {
+			segsiz = *((int *) (p + 0x0000)); // 存放的是数据段的大小
+			esp    = *((int *) (p + 0x000c)); // 存放的是应用程序启动时ESP寄存器的初始值
+			datsiz = *((int *) (p + 0x0010)); // 存放的是需要向数据段传送的部分的字节数
+			dathrb = *((int *) (p + 0x0014)); // 存放的是需要向数据段传送的部分在hrb文件中的起始地址
+			q = (char *) memman_alloc_4k(memman, segsiz); // 应用程序专用的内存空间
+			*((int *) 0xfe8) = (int) q;
 
-		// farcall(0, 1003 * 8);
+			// AR_CODE32_ER + 0x60 表示应用程序运行时,如果段寄存器存放操作系统段会发生异常
+			set_segmdesc(gdt + 1003, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60);
+			set_segmdesc(gdt + 1004, segsiz - 1,      (int) q, AR_DATA32_RW + 0x60);
+			
+			// 从hrb文件传送数据到数据段，
+			// ESP之前地址是栈空间, ESP地址及之后被用于存放字符串等数据
+			for (i = 0; i < datsiz; i++) {
+				q[esp + i] = p[dathrb + i];
+			}
+			start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
+			memman_free_4k(memman, (int) q, segsiz);
+		} else {
+			cons_putstr0(cons, ".hrb file format error.\n");
+		}
 		memman_free_4k(memman, (int) p, finfo->size);
-		memman_free_4k(memman, (int) q, 64 * 1024);
-	
 		cons_newline(cons);
 		return 1;
 	}
@@ -334,17 +334,50 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
 // EDX存放功能号
 int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
 {
-	int cs_base = *((int*)0xfe8);
+	int ds_base = *((int*)0xfe8);
 	struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
 	struct TASK* task = task_now();
+
+	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
+	struct SHEET *sht;
+	int *reg = &eax + 1;	/* eax后边的地址 */
+		/* 强行改写通过PUSHAD保存的值, 作为返回值 */
+		/* reg[0] : EDI,   reg[1] : ESI,   reg[2] : EBP,   reg[3] : ESP */
+		/* reg[4] : EBX,   reg[5] : EDX,   reg[6] : ECX,   reg[7] : EAX */
+
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1); // AL = 字符编码
 	}
 	 else if (edx == 2) {
-		cons_putstr0(cons, (char *) ebx + cs_base);  // EBX = 字符串地址
+		cons_putstr0(cons, (char *) ebx + ds_base);  // EBX = 字符串地址
 	} 
 	else if (edx == 3) {
-		cons_putstr1(cons, (char *) ebx + cs_base, ecx); // EBX = 字符串地址，ECX = 字符串长度
+		cons_putstr1(cons, (char *) ebx + ds_base, ecx); // EBX = 字符串地址，ECX = 字符串长度
+	}
+	else if (edx == 5) { // 显示窗口
+		// EDX = 5 EBX = 窗口缓冲区 ESI = 窗口在x轴方向上的大小（即窗口宽度）
+		// EDI = 窗口在y轴方向上的大小（即窗口高度）EAX = 透明色 
+		// ECX = 窗口名称
+		// 返回值: EAX =用于操作窗口的句柄（用于刷新窗口等操作）
+		sht = sheet_alloc(shtctl);
+		sheet_setbuf(sht, (char *) ebx + ds_base, esi, edi, eax);
+		make_window8((char *) ebx + ds_base, esi, edi, (char *) ecx + ds_base, 0);
+		sheet_slide(sht, 100, 50);
+		sheet_updown(sht, 3);	/* 背景高度位于task_a之上 */
+		reg[7] = (int) sht;
+	}
+	else if (edx == 6) { // 窗口上显示字符
+		// EBX = 窗口句柄 ESI = 显示位置的x坐标 EDI = 显示位置的y坐标 
+		// EAX = 色号 ECX = 字符串长度EBP = 字符串
+		sht = (struct SHEET *) ebx;
+		putfonts8_asc(sht->buf, sht->bxsize, esi, edi, eax, (char *) ebp + ds_base);
+		sheet_refresh(sht, esi, edi, esi + ecx * 8, edi + 16);
+	}
+	else if (edx == 7) { // 窗口上描绘方块
+		// EBX = 窗口句柄 EAX = x0 ECX = y0 ESI = x1 EDI = y1 EBP = 色号
+		sht = (struct SHEET *) ebx;
+		boxfill8(sht->buf, sht->bxsize, ebp, eax, ecx, esi, edi);
+		sheet_refresh(sht, eax, ecx, esi + 1, edi + 1);
 	}
 	else if (edx == 4) {
 		return &(task->tss.esp0);
