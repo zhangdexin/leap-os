@@ -75,6 +75,13 @@ line.bim : line.obj a_nask.obj Makefile
 line.hrb : line.bim Makefile
 	$(BIM2HRB) line.bim line.hrb 48k
 
+walk.bim : walk.obj a_nask.obj Makefile
+	$(OBJ2BIM) @$(RULEFILE) out:walk.bim stack:1k map:walk.map \
+		walk.obj a_nask.obj
+
+walk.hrb : walk.bim Makefile
+	$(BIM2HRB) walk.bim walk.hrb 48k
+
 a.bim: a.obj a_nask.obj Makefile
 	$(OBJ2BIM) @$(RULEFILE) out:a.bim map:a.map a.obj a_nask.obj
 
@@ -98,7 +105,8 @@ crack4.hrb : crack4.nas Makefile
 
 haribote.img : ipl10.bin haribote.sys Makefile \
 		crack1.hrb hello.hrb a.hrb crack2.hrb crack3.hrb \
-		crack4.hrb hello5.hrb winhello.hrb star.hrb line.hrb
+		crack4.hrb hello5.hrb winhello.hrb star.hrb line.hrb \
+		walk.hrb
 	$(EDIMG)   imgin:../z_tools/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0 \
 		copy from:haribote.sys to:@: \
@@ -114,6 +122,7 @@ haribote.img : ipl10.bin haribote.sys Makefile \
 		copy from:winhello.hrb to:@: \
 		copy from:star.hrb to:@: \
 		copy from:line.hrb to:@: \
+		copy from:walk.hrb to:@: \
 		imgout:haribote.img
 
 %.gas : %.c bootpack.h Makefile

@@ -228,6 +228,7 @@ struct SHEET {
 	height,             // 图层高度(指所在的图层数吧)
 	flags;              // 设定信息
 	struct SHTCTL* ctl;
+	struct TASK* task; // 所属的task
 };
 
 // 图层管理
@@ -281,6 +282,7 @@ void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
 struct CONSOLE {
 	struct SHEET *sht;
 	int cur_x, cur_y, cur_c;
+	struct TIMER* timer;
 };
 
 void console_task(struct SHEET *sheet, unsigned int memtotal);
