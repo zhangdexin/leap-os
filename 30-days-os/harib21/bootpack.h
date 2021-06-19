@@ -226,7 +226,7 @@ struct SHEET {
 	vx0, vy0,           // 位置坐标，v(VRAM)
 	col_inv,            // 透明色色号
 	height,             // 图层高度(指所在的图层数吧)
-	flags;              // 设定信息
+	flags;              // 设定信息, 0x20表示图层是否需要光标，0x10表示窗口是否是应用程序,0x01表示是否自动关闭
 	struct SHTCTL* ctl;
 	struct TASK* task; // 所属的task
 };
@@ -272,11 +272,12 @@ void timer_settime(struct TIMER* timer, unsigned int timeout);
 extern struct TIMERCTL timerctl;
 
 
-/* window.c */
+/* window.c
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
 void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
+void change_wtitle8(struct SHEET *sht, char act);
 
 /* console.c */
 struct CONSOLE {
