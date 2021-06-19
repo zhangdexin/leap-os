@@ -206,6 +206,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char* cmdline)
 					sheet_free(sht);
 				}
 			}
+			timer_cancelall(&task->fifo);
 
 			memman_free_4k(memman, (int) q, segsiz);
 		} else {
@@ -521,11 +522,28 @@ int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			if (i == 3) {	/* 光标OFF */
 				cons->cur_c = -1;
 			}
-			if (256 <= i && i <= 511) { /* 键盘数据（通过任务A） */
+			if (256 <= i) { /* 键盘数据（通过任务A） */
 				reg[7] = i - 256;
 				return 0;
 			}
 		}
+	}
+	else if (edx == 16) {  // 获取定时器（alloc）
+		// EAX=定时器句柄（由操作系统返回）
+		reg[7] = (int) timer_alloc();
+		((struct TIMER*) reg[7])->flags2 = 1; // 程序结束自动取消定时器
+	}
+	else if (edx == 17) { // 设置定时器的发送数据（init）
+		// EBX=定时器句柄 EAX=数据
+		timer_init((struct TIMER *)ebx, &task->fifo, eax + 256);
+	} 
+	else if (edx == 18) { // 定时器时间设定（set）
+		// EBX=定时器句柄 EAX=时间
+		timer_settime((struct TIMER *) ebx, eax);
+	}
+	else if (edx == 19) { // 释放定时器（free）
+		// EBX=定时器句柄
+		timer_free((struct TIMER *) ebx);
 	}
 
 	return 0;

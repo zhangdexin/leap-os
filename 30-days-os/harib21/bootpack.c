@@ -324,7 +324,7 @@ void HariMain(void)
 						my = binfo->scrny - 1;
 					}
 					sheet_slide(sht_mouse, mx, my);
-					if (mdec.btn & 0x01 != 0) { // 按下左键
+					if ((mdec.btn & 0x01) != 0) { // 按下左键
 						//sheet_slide(sht_win, mx - 80, my - 80);
 						if (mmx < 0) { // 处于通常模式
 							// 按照从上到下的顺序寻找鼠标所指向的图层

@@ -228,7 +228,7 @@ struct SHEET {
 	height,             // 图层高度(指所在的图层数吧)
 	flags;              // 设定信息, 0x20表示图层是否需要光标，0x10表示窗口是否是应用程序,0x01表示是否自动关闭
 	struct SHTCTL* ctl;
-	struct TASK* task; // 所属的task
+	struct TASK* task;  // 所属的task
 };
 
 // 图层管理
@@ -252,9 +252,10 @@ struct SHTCTL* shtctl_init(struct MEMMAN* memman, unsigned char* vram, int xsize
 
 struct TIMER {
 	struct TIMER* next;
-	unsigned int timeout, flags;
+	unsigned int timeout;
+	char flags, flags2; // flags2区分定时器是否应用程序结束自动取消
 	struct FIFO32* fifo;
-	unsigned char data;
+	int data;
 };
 
 struct TIMERCTL {
@@ -269,10 +270,12 @@ struct TIMER* timer_alloc();
 void timer_free(struct TIMER* timer);
 void timer_init(struct TIMER* timer, struct FIFO32* fifo, int data);
 void timer_settime(struct TIMER* timer, unsigned int timeout);
+void timer_cancelall(struct FIFO32 *fifo);
+int timer_cancel(struct TIMER *timer);
 extern struct TIMERCTL timerctl;
 
 
-/* window.c
+/* window.c */
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
 void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
