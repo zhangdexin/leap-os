@@ -425,8 +425,8 @@ int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		sht->flags |= 0x10;
 		sheet_setbuf(sht, (char *) ebx + ds_base, esi, edi, eax);
 		make_window8((char *) ebx + ds_base, esi, edi, (char *) ecx + ds_base, 0);
-		sheet_slide(sht, 100, 50);
-		sheet_updown(sht, 3);	/* 背景高度位于task_a之上 */
+		sheet_slide(sht, (shtctl->xsize - esi) / 2, (shtctl->ysize - edi) / 2);
+		sheet_updown(sht, shtctl->top);	/* 背景高度位于task_a之上 */
 		reg[7] = (int) sht;
 	}
 	else if (edx == 6) { // 窗口上显示字符
