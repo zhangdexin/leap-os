@@ -187,18 +187,19 @@ int cmd_app(struct CONSOLE *cons, int *fat, char* cmdline)
 			datsiz = *((int *) (p + 0x0010)); // 存放的是需要向数据段传送的部分的字节数
 			dathrb = *((int *) (p + 0x0014)); // 存放的是需要向数据段传送的部分在hrb文件中的起始地址
 			q = (char *) memman_alloc_4k(memman, segsiz); // 应用程序专用的内存空间
-			*((int *) 0xfe8) = (int) q;
+			task->ds_base = (int) q;   // 修改前：*((int *) 0xfe8) = (int) q;
 
 			// AR_CODE32_ER + 0x60 表示应用程序运行时,如果段寄存器存放操作系统段会发生异常
-			set_segmdesc(gdt + 1003, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60);
-			set_segmdesc(gdt + 1004, segsiz - 1,      (int) q, AR_DATA32_RW + 0x60);
+			// sel为段号*8
+			set_segmdesc(gdt + task->sel / 8 + 1000, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60);
+			set_segmdesc(gdt + task->sel / 8 + 2000, segsiz - 1,      (int) q, AR_DATA32_RW + 0x60);
 			
 			// 从hrb文件传送数据到数据段，
 			// ESP之前地址是栈空间, ESP地址及之后被用于存放字符串等数据
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
-			start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
+			start_app(0x1b, task->sel + 1000 * 8, esp, task->sel + 2000 * 8, &(task->tss.esp0));
 			shtctl = (struct SHTCTL*) *((int *)0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets0[i]);
@@ -249,7 +250,7 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, unsigned int mem
 void console_task(struct SHEET *sheet, unsigned int memtotal)
 {
 	struct TASK *task = task_now();
-	int i, fifobuf[128];
+	int i;
 	char cmdline[30];
 	struct CONSOLE cons;
 	struct MEMMAN* memman = (struct MEMMAN*) MEMMAN_ADDR;
@@ -264,9 +265,7 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	cons.sht = sheet;
-	*((int*)0xfec) = (int)&cons;
-
-	fifo32_init(&task->fifo, 128, fifobuf, task);
+	task->cons = &cons; // 修改前：*((int*)0xfec) = (int)&cons;
 
 	cons.timer = timer_alloc();
 	timer_init(cons.timer, &task->fifo, 1);
@@ -274,7 +273,6 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
 
 	/* 显示提示符 */
 	putfonts8_asc_sht(sheet, 8, 28, COL8_FFFFFF, COL8_000000, ">", 1);
-
 	cons_putchar(&cons, '>', 1);
 
 	for (;;) {
@@ -394,9 +392,9 @@ void hrb_api_linewin(struct SHEET *sht, int x0, int y0, int x1, int y1, int col)
 // EDX存放功能号
 int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
 {
-	int ds_base = *((int*)0xfe8);
-	struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
 	struct TASK* task = task_now();
+	int ds_base = task->ds_base;
+	struct CONSOLE *cons = task->cons;
 
 	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	struct SHEET *sht;
@@ -570,8 +568,9 @@ int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 
 int* inthandler0c(int *esp)
 {
-	struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
 	struct TASK* task = task_now();
+	struct CONSOLE *cons = task->cons;
+	
 	char s[30];
 	cons_putstr0(cons, "\nINT 0C :\n Stack Exception.\n");
 
@@ -583,8 +582,9 @@ int* inthandler0c(int *esp)
 
 int* inthandler0d(int *esp)
 {
-	struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
 	struct TASK* task = task_now();
+	struct CONSOLE *cons = task->cons;
+	
 	char s[30];
 	cons_putstr0(cons, "\nINT 0D :\n General Protected Exception.\n");
 
