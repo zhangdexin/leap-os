@@ -93,6 +93,7 @@ struct TASK {
 	struct TSS32 tss;
 	struct CONSOLE* cons; // 所属的命令行
 	int ds_base; // 程序的数据段地址的base值，因为目前一个命令行窗口只能运行一个程序
+	int cons_stack; // 命令行程序运行时栈空间
 };
 
 // TASKLEVEL表示任务运行的层级，优先级上更加细粒度的划分，0优先级最高，处于level0的任务最先运行
