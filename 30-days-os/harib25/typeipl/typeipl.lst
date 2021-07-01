@@ -1,0 +1,45 @@
+     1 00000000                                 [FORMAT "WCOFF"]
+     2 00000000                                 [INSTRSET "i486p"]
+     3 00000000                                 [OPTIMIZE 1]
+     4 00000000                                 [OPTION 1]
+     5 00000000                                 [BITS 32]
+     6 00000000                                 	EXTERN	_api_fopen
+     7 00000000                                 	EXTERN	_api_end
+     8 00000000                                 	EXTERN	_api_fread
+     9 00000000                                 	EXTERN	_api_putchar
+    10 00000000                                 [FILE "typeipl.c"]
+    11                                          [SECTION .data]
+    12 00000000                                 LC0:
+    13 00000000 69 70 6C 31 30 2E 6E 61 73 00   	DB	"ipl10.nas",0x00
+    14                                          [SECTION .text]
+    15 00000000                                 	GLOBAL	_HariMain
+    16 00000000                                 _HariMain:
+    17 00000000 55                              	PUSH	EBP
+    18 00000001 89 E5                           	MOV	EBP,ESP
+    19 00000003 53                              	PUSH	EBX
+    20 00000004 51                              	PUSH	ECX
+    21 00000005 68 [00000000]                   	PUSH	LC0
+    22 0000000A E8 [00000000]                   	CALL	_api_fopen
+    23 0000000F 5A                              	POP	EDX
+    24 00000010 89 C3                           	MOV	EBX,EAX
+    25 00000012 85 C0                           	TEST	EAX,EAX
+    26 00000014 75 0A                           	JNE	L3
+    27 00000016                                 L2:
+    28 00000016 E8 [00000000]                   	CALL	_api_end
+    29 0000001B 8B 5D FC                        	MOV	EBX,DWORD [-4+EBP]
+    30 0000001E C9                              	LEAVE
+    31 0000001F C3                              	RET
+    32 00000020                                 L3:
+    33 00000020 53                              	PUSH	EBX
+    34 00000021 8D 45 FB                        	LEA	EAX,DWORD [-5+EBP]
+    35 00000024 6A 01                           	PUSH	1
+    36 00000026 50                              	PUSH	EAX
+    37 00000027 E8 [00000000]                   	CALL	_api_fread
+    38 0000002C 83 C4 0C                        	ADD	ESP,12
+    39 0000002F 85 C0                           	TEST	EAX,EAX
+    40 00000031 74 E3                           	JE	L2
+    41 00000033 0F BE 45 FB                     	MOVSX	EAX,BYTE [-5+EBP]
+    42 00000037 50                              	PUSH	EAX
+    43 00000038 E8 [00000000]                   	CALL	_api_putchar
+    44 0000003D 58                              	POP	EAX
+    45 0000003E EB E0                           	JMP	L3
