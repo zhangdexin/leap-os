@@ -115,6 +115,11 @@ void HariMain(void)
 	int x, y, mmx = -1, mmy = -1, mmx2 = 0, 
 	new_mx = -1, new_my = 0, new_wx = 0x7fffffff, new_wy = 0;;
 
+	int *fat;
+	unsigned char *nihongo;
+	struct FILEINFO *finfo;
+	extern char hankaku[4096];
+
 	// 初始化中断
 	init_gdtidt();
 	init_pic();
@@ -143,6 +148,7 @@ void HariMain(void)
 	task_run(task_a, 1, 0);
 	*((int *) 0x0fe4) = (int) shtctl;
 	*((int *) 0x0fec) = (int) &fifo; 
+	task_a->langmode = 0;
 
 	// background
 	sht_back = sheet_alloc(shtctl);
@@ -174,6 +180,24 @@ void HariMain(void)
 	// 为了避免和键盘状态冲突，一开始进行设置
 	fifo32_put(&keycmd, KEYCMD_LED);
 	fifo32_put(&keycmd, key_leds);
+
+	/* 载入nihongo.fnt */
+	nihongo = (unsigned char *) memman_alloc_4k(memman, 16 * 256 + 32 * 94 * 47);
+	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
+	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	if (finfo != 0) {
+		file_loadfile(finfo->clustno, finfo->size, nihongo, fat, (char *) (ADR_DISKIMG + 0x003e00));
+	} else {
+		for (i = 0; i < 16 * 256; i++) {
+			nihongo[i] = hankaku[i]; /* 没有字库，半角部分直接复制英文字库 */
+		}
+		for (i = 16 * 256; i < 16 * 256 + 32 * 94 * 47; i++) {
+			nihongo[i] = 0xff; /* 没有字库，全角部分以0xff填充 */
+		}
+	}
+	*((int *) 0x0fe8) = (int) nihongo;
+	memman_free_4k(memman, (int) fat, 4 * 2880);
 
 	// sheet_refresh改为局部刷新时，需要多次调用
 	for (;;) {

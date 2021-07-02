@@ -10,15 +10,15 @@ DEL      = del
 default :
 	$(MAKE) haribote.img
 
-haribote.img : haribote/ipl10.bin haribote/haribote.sys Makefile \
+haribote.img : haribote/ipl20.bin haribote/haribote.sys Makefile \
 		a/a.hrb hello3/hello3.hrb hello4/hello4.hrb hello5/hello5.hrb \
 		winhello/winhello.hrb star/star.hrb line/line.hrb walk/walk.hrb \
 		noodle/noodle.hrb beepdown/beepdown.hrb color/color.hrb sosu/sosu.hrb \
-		typeipl/typeipl.hrb
+		typeipl/typeipl.hrb type/type.hrb  iroha/iroha.hrb
 	$(EDIMG)   imgin:../z_tools/fdimg0at.tek \
-		wbinimg src:haribote/ipl10.bin len:512 from:0 to:0 \
+		wbinimg src:haribote/ipl20.bin len:512 from:0 to:0 \
 		copy from:haribote/haribote.sys to:@: \
-		copy from:haribote/ipl10.nas to:@: \
+		copy from:haribote/ipl20.nas to:@: \
 		copy from:make.bat to:@: \
 		copy from:a/a.hrb to:@: \
 		copy from:hello3/hello3.hrb to:@: \
@@ -33,6 +33,9 @@ haribote.img : haribote/ipl10.bin haribote/haribote.sys Makefile \
 		copy from:color/color.hrb to:@: \
 		copy from:sosu/sosu.hrb to:@: \
 		copy from:typeipl/typeipl.hrb to:@: \
+		copy from:type/type.hrb to:@: \
+		copy from:iroha/iroha.hrb to:@: \
+		copy from:nihongo/nihongo.fnt to:@: \
 		imgout:haribote.img
 
 # make -C change dir and do make
@@ -61,6 +64,8 @@ full :
 	$(MAKE) -C color
 	$(MAKE) -C sosu
 	$(MAKE) -C typeipl
+	$(MAKE) -C type
+	$(MAKE) -C iroha
 	$(MAKE) haribote.img
 
 run_full :
@@ -96,6 +101,10 @@ clean_full :
 	$(MAKE) -C noodle		clean
 	$(MAKE) -C beepdown		clean
 	$(MAKE) -C color		clean
+	$(MAKE) -C sosu			clean
+	$(MAKE) -C typeipl		clean
+	$(MAKE) -C type			clean
+	$(MAKE) -C iroha		clean
 
 src_only_full :
 	$(MAKE) -C haribote		src_only
@@ -111,6 +120,10 @@ src_only_full :
 	$(MAKE) -C noodle		src_only
 	$(MAKE) -C beepdown		src_only
 	$(MAKE) -C color		src_only
+	$(MAKE) -C sosu			src_only
+	$(MAKE) -C typeipl		src_only
+	$(MAKE) -C type			src_only
+	$(MAKE) -C iroha		src_only
 	-$(DEL) haribote.img
 
 refresh :

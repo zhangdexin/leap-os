@@ -178,6 +178,8 @@ struct TASK {
 	int cons_stack; // 命令行程序运行时栈空间
 	struct FILEHANDLE* fhandle; //文件相关操作
 	int* fat;  // fat
+	char* cmdline;
+	unsigned char langmode, langbyte1;
 };
 
 // TASKLEVEL表示任务运行的层级，优先级上更加细粒度的划分，0优先级最高，处于level0的任务最先运行

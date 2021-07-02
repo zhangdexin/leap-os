@@ -5,6 +5,7 @@ void cons_newline(struct CONSOLE *cons)
 {
 	int x, y;
 	struct SHEET *sheet = cons->sht;
+	struct TASK* task = task_now();
 	if (cons->cur_y < 28 + 112) {
 		cons->cur_y += 16; /* 换行 */
 	} else {
@@ -25,6 +26,10 @@ void cons_newline(struct CONSOLE *cons)
 	}
 
 	cons->cur_x = 8;
+	if (task->langmode == 1 && task->langbyte1 != 0) {
+		cons->cur_x += 8;
+	}
+
 	return;
 }
 
@@ -132,26 +137,6 @@ void cmd_ls(struct CONSOLE *cons)
 	return;
 }
 
-void cmd_type(struct CONSOLE *cons, int *fat, char *cmdline)
-{
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	struct FILEINFO *finfo = file_search(cmdline + 5, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
-	char *p;
-	int i;
-	if (finfo != 0) {
-		/* 找到文件的情况 */
-		p = (char *) memman_alloc_4k(memman, finfo->size);
-		file_loadfile(finfo->clustno, finfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
-		cons_putstr1(cons, p, finfo->size);
-		memman_free_4k(memman, (int) p, finfo->size);
-	} else {
-		/* 没有找到文件的情况 */
-		cons_putstr0(cons, "File not found. \n");
-	}
-	cons_newline(cons);
-	return;
-}
-
 int cmd_app(struct CONSOLE *cons, int *fat, char* cmdline)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -225,6 +210,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char* cmdline)
 			timer_cancelall(&task->fifo);
 
 			memman_free_4k(memman, (int) q, segsiz);
+			task->langbyte1 = 0;
 		} else {
 			cons_putstr0(cons, ".hrb file format error.\n");
 		}
@@ -293,6 +279,19 @@ void cmd_ncst(struct CONSOLE *cons, char *cmdline, int memtotal)
 	return;
 }
 
+void cmd_langmode(struct CONSOLE *cons, char *cmdline)
+{
+	struct TASK *task = task_now();
+	unsigned char mode = cmdline[9] - '0';
+	if (mode <= 2) {
+		task->langmode = mode;
+	} else {
+		cons_putstr0(cons, "mode number error.\n");
+	}
+	cons_newline(cons);
+	return;
+}
+
 void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, unsigned int memtotal)
 {
 	if (strcmp(cmdline, "mem") == 0 && cons->sht != 0) {
@@ -303,9 +302,6 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, unsigned int mem
 	} 
 	else if (strcmp(cmdline, "ls") == 0 && cons->sht != 0) {
 		cmd_ls(cons);
-	} 
-	else if (strncmp(cmdline, "type ", 5) == 0 && cons->sht != 0) {
-		cmd_type(cons, fat, cmdline);
 	}
 	else if (strcmp(cmdline, "exit") == 0) {
 		cmd_exit(cons, fat);
@@ -315,6 +311,9 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, unsigned int mem
 	}
 	else if(strncmp(cmdline, "ncst ", 5) == 0) {
 		cmd_ncst(cons, cmdline, memtotal);
+	}
+	else if (strncmp(cmdline, "langmode ", 9) == 0) {
+		cmd_langmode(cons, cmdline);
 	}
 	else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
@@ -335,6 +334,7 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
 	struct CONSOLE cons;
 	struct FILEHANDLE fhandle[8];
 	struct MEMMAN* memman = (struct MEMMAN*) MEMMAN_ADDR;
+	unsigned char *nihongo = (char *) *((int *) 0x0fe8);
 
 	for (i = 0; i < 8; i++) {
 		fhandle[i].buf = 0;
@@ -347,12 +347,19 @@ void console_task(struct SHEET *sheet, unsigned int memtotal)
 	int* fat = (int *)memman_alloc_4k(memman, 4 * 2880);
 	file_readfat(fat, (unsigned char*)(ADR_DISKIMG + 0x000200)); 
 	task->fat = fat;
+	if (nihongo[4096] != 0xff) { /* 是否载入日文字库 */
+		task->langmode = 1;
+	} else {
+		task->langmode = 0;
+	}
+	task->langbyte1 = 0;
 
 	cons.cur_x = 8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	cons.sht = sheet;
 	task->cons = &cons; // 修改前：*((int*)0xfec) = (int)&cons;
+	task->cmdline = cmdline;
 
 	if (cons.sht != 0) {
 		cons.timer = timer_alloc();
@@ -750,6 +757,24 @@ int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			fh->pos++;
 		}
 		reg[7] = i;
+	}
+	else if (edx == 26) { // 获取命令行内容
+		// EBX=存放命令行内容的地址 ECX=最多可存放多少字节 
+		// EAX=实际存放了多少字节（由操作系统返回）
+
+		i = 0;
+		for (;;) {
+			*((char *) ebx + ds_base + i) =  task->cmdline[i];
+			if (task->cmdline[i] == 0) {
+				break;
+			}
+			if (i >= ecx) {
+				break;
+			}
+			i++;
+		}
+		reg[7] = i;
+
 	}
 
 	return 0;

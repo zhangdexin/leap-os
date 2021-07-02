@@ -21,11 +21,11 @@ COPY     = copy
 DEL      = del
 
 default :
-	$(MAKE) ipl10.bin
+	$(MAKE) ipl20.bin
 	$(MAKE) haribote.sys
 
-ipl10.bin : ipl10.nas Makefile
-	$(NASK) ipl10.nas ipl10.bin ipl10.lst
+ipl20.bin : ipl20.nas Makefile
+	$(NASK) ipl20.nas ipl20.bin ipl20.lst
 
 asmhead.bin : asmhead.nas Makefile
 	$(NASK) asmhead.nas asmhead.bin asmhead.lst
@@ -67,5 +67,5 @@ clean :
 
 src_only :
 	$(MAKE) clean
-	-$(DEL) ipl10.bin
+	-$(DEL) ipl20.bin
 	-$(DEL) haribote.sys

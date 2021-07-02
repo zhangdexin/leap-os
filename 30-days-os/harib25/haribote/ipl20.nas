@@ -6,7 +6,7 @@
 ; 第一个扇区称为启动区
 
 
-CYLS   EQU  10      ; define
+CYLS   EQU  20      ; define
 
 	ORG  0x7c00     ; 程序要读到的位置
 	
