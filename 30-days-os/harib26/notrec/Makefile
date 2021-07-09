@@ -1,4 +1,4 @@
-APP      = sosu
+APP      = notrec
 STACK    = 22k
 MALLOC   = 0k
 

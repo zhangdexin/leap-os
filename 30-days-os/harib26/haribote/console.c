@@ -526,7 +526,7 @@ int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		cons_putstr1(cons, (char *) ebx + ds_base, ecx); // EBX = 字符串地址，ECX = 字符串长度
 	}
 	else if (edx == 5) { // 显示窗口
-		// EDX = 5 EBX = 窗口缓冲区 ESI = 窗口在x轴方向上的大小（即窗口宽度）
+		// EBX = 窗口缓冲区 ESI = 窗口在x轴方向上的大小（即窗口宽度）
 		// EDI = 窗口在y轴方向上的大小（即窗口高度）EAX = 透明色 
 		// ECX = 窗口名称
 		// 返回值: EAX =用于操作窗口的句柄（用于刷新窗口等操作）
@@ -595,6 +595,17 @@ int* hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		sht = (struct SHEET *) (ebx & 0xfffffffe);
 		hrb_api_linewin(sht, eax, ecx, esi, edi, ebp);
 		if ((ebx & 1) == 0) {
+			if (eax > esi) {
+				i = eax;
+				eax = esi;
+				esi = i;
+			}
+			if (ecx > edi) {
+				i = ecx;
+				ecx = edi;
+				edi = i;
+			}
+
 			sheet_refresh(sht, eax, ecx, esi + 1, edi + 1);
 		}
 	}
