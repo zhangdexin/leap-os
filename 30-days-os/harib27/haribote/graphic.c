@@ -49,6 +49,7 @@ void init_palette(void)
 			}
 		}
 	}
+	set_palette(16, 231, table2);
 	return;
 }
 
