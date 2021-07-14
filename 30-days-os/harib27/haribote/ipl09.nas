@@ -6,7 +6,7 @@
 ; 第一个扇区称为启动区
 
 
-CYLS   EQU  20      ; define
+CYLS   EQU  9      ; define 要读取的柱面个数
 
 	ORG  0x7c00     ; 程序要读到的位置
 	
@@ -51,46 +51,18 @@ entry:
 	MOV  CH,0       ; 柱面0
 	MOV  DH,0       ; 磁头0
 	MOV	 CL,2		; 扇区2
+	MOV  BX,18*2*CYLS-1 ; 要读取的合计扇区
+	CALL readfast   ; 告诉读取
 	
-readloop:
-	MOV	 SI,0		; 失败次数
-	
-retry:
-	MOV	 AH,0x02	; AH=0x02,表示调用BIOS读取磁盘
-	MOV	 AL,1		; 1个扇区
-	MOV	 BX,0
-	MOV	 DL,0x00	; A驱动器
-	INT	 0x13		; 陷入中断调用BIOS
-	JNC	 next		; JNC,jump not carry(进位), 表示没出错就跳转
-	ADD	 SI,1		; SI加1
-	CMP	 SI,5		; SI和5比较
-	JAE	 error		; SI >= 5时跳到error, JAE,jump above or equal
-	MOV	 AH,0x00
-	MOV	 DL,0x00
-	INT	 0x13		; AH=0,DL=0,重置驱动器,便于重新读取
-	JMP	 retry
-	
-next:
-	MOV	 AX,ES		; 内存地址后移0x200
-	ADD	 AX,0x0020
-	MOV	 ES,AX		; ADD ES,0x020 因为没有ADD ES,所以这里绕弯
-	ADD	 CL,1		; CL加1，下一个扇区
-	CMP	 CL,18		; CL和18比较
-	JBE	 readloop	; CL <= 18跳到readloop，JBE,jump below equal
-	MOV	 CL,1
-	ADD	 DH,1       ; 下一个磁头
-	CMP	 DH,2
-	JB	 readloop	; DH < 2跳到readloop, JE,jump below
-	MOV	 DH,0
-	ADD	 CH,1       ; 下一个柱面
-	CMP	 CH,CYLS
-	JB	 readloop	; CH < CYLS跳到readloop
-	
-	MOV		[0x0ff0],CH  ; IPL记录CH的读取位置
+; 读取结束，运行haribote.sys
+	MOV		BYTE [0x0ff0],CYLS  ; IPL实际读取了多少内容
 	JMP		0xc200       ; 规定执行程序写在0x4200以后的地方，所以跳到0x8200+0x4200=0xc200处开始执行程序   
 
 error:
-	MOV  SI,msg
+	MOV		AX,0
+	MOV		ES,AX
+	MOV		SI,msg
+
 putloop:
 	MOV	 AL,[SI]
 	ADD	 SI,1			; SI加1
@@ -109,6 +81,85 @@ msg:
 	DB		0x0a			; 换行
 	DB		0
 
-	RESB	0x7dfe-$		; 0x7dfe地址到此处填充0
+readfast:      ;使用AL尽量一次性读取数据
+; ES: 读取地址   CH:柱面  DH:磁头  CL:扇区  BX:读取的扇区
 
+	MOV		AX,ES			; < 通过ES计算AL最大值 >
+	SHL		AX,3			; AX除以32，结果存入AH
+	AND		AH,0x7f			; AH是AH除以128所得的余数（512*128=64K）
+	MOV		AL,128			; AL = 128 - AH; AH是AH除以128所得的余数（512*128=64K）
+	SUB		AL,AH
+
+	MOV		AH,BL			; < 通过BX计算AL的最大值存入AH >
+	CMP		BH,0			; if (BH != 0) { AH = 18; }
+	JE		.skip1
+	MOV		AH,18
+
+.skip1:
+	CMP		AL,AH			; if (AL > AH) { AL = AH; }
+	JBE		.skip2
+	MOV		AL,AH
+
+.skip2:
+	MOV		AH,19			; < 通过CL计算AL的最大值并存入AH >
+	SUB		AH,CL			; AH = 19 - CL;
+	CMP		AL,AH			; if (AL > AH) { AL = AH; }
+	JBE		.skip3
+	MOV		AL,AH
+
+.skip3:
+	PUSH	BX
+	MOV		SI,0			; 计算失败次数
+
+retry:
+	MOV		AH,0x02			; AH=0x02 : 读取磁盘
+	MOV		BX,0
+	MOV		DL,0x00			; A驱动器
+	PUSH	ES
+	PUSH	DX
+	PUSH	CX
+	PUSH	AX
+	INT		0x13			; 调用BIOS命令时，ES
+	JNC		next			; 没有出错则跳转到next
+	ADD		SI,1			; SI加1
+	CMP		SI,5			; SI和5比较
+	JAE		error			; SI >= 5 跳转到error
+	MOV		AH,0x00
+	MOV		DL,0x00			; A驱动器
+	INT		0x13			; 驱动器重置
+	POP		AX
+	POP		CX
+	POP		DX
+	POP		ES
+	JMP		retry
+
+next:
+	POP		AX
+	POP		CX
+	POP		DX
+	POP		BX				; ES内容存入BX
+	SHR		BX,5			; BX由16字节为单位转换为512字节为单位
+	MOV		AH,0
+	ADD		BX,AX			; BX += AL;
+	SHL		BX,5			; BX由512字节为单位转为16字节为单位
+	MOV		ES,BX			; 相当于 ES += AL * 0x20;
+	POP		BX
+	SUB		BX,AX
+	JZ		.ret
+	ADD		CL,AL			; CL加上AL
+	CMP		CL,18			; CL与18比较
+	JBE		readfast		; CL <= 18 跳转到readfast
+	MOV		CL,1
+	ADD		DH,1
+	CMP		DH,2
+	JB		readfast		; DH < 2 跳转到readfast
+	MOV		DH,0
+	ADD		CH,1
+	JMP		readfast
+
+.ret:
+	RET
+
+	RESB	0x7dfe-$		; 0x7dfe地址到此处填充0
+	
 	DB		0x55, 0xaa      ; 启动区的最后两个字节是0x55和0xaa表示是操作系统程序
