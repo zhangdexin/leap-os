@@ -162,7 +162,7 @@ void HariMain(void)
 	// sht_mouse
 	sht_mouse = sheet_alloc(shtctl);
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); // 透明色号99
-	init_mouse_cursor8(buf_mouse, COL8_008484);
+	init_mouse_cursor8(buf_mouse, 99);
 	mx = (binfo->scrnx - 16) / 2; 
 	my = (binfo->scrny - 28 - 16) / 2;
 
