@@ -19,5 +19,7 @@
 * 回车
 ```
 
+![image](https://user-images.githubusercontent.com/22785392/125712501-1ea8c45f-7e7d-46a2-b843-75fdbf8fe834.png)
+
 # leap-os
 进行中
