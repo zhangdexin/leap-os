@@ -12,7 +12,7 @@
 ## 教程
 适用于不想去看书的同学或者看书不能完全明白的同学
 
-[教程](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/00-pre.md)
+[教程](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/00-table_of_contents.md)
 
 因为书中有些内容直接带过，并没有细讲，还有就是书中为了照顾新手，前面的代码到后来就会有推翻现象，所以这个教程从最完整代码讲起
 
