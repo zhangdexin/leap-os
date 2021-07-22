@@ -12,18 +12,22 @@
 ## 教程
 适用于不想去看书的同学或者看书不能完全明白的同学
 
-[教程](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/00-pre.md)
+[教程](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/00-table_of_contents.md)
 
 因为书中有些内容直接带过，并没有细讲，还有就是书中为了照顾新手，前面的代码到后来就会有推翻现象，所以这个教程从最完整代码讲起
 
 ## run
-目前运行只是支持Windows下
+windows下:
 ```
 * 进入harib目录
 * 双击!cons_nt.bat
 * 输入命令 make run_full
 * 回车
 ```
+
+其他系统：
+上一步windwos下生成的haribote.img转为iso或者使用工程中自带的iso，可在虚拟机(virtualbox，qemu等)上启动
+
 
 ![image](https://user-images.githubusercontent.com/22785392/125712501-1ea8c45f-7e7d-46a2-b843-75fdbf8fe834.png)
 
