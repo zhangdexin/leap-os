@@ -40,19 +40,19 @@ entry:
 	MOV  DS,AX
 
 ; 软盘共有80个柱面，2个磁头，每个柱面18个扇区，每个扇区512字节
-; 读磁盘CYLS(10)个柱面的数据到0x08200～0x34fff
+; 读磁盘CYLS(9)个柱面的数据到0x08200～0x30a00
 ; IPL的启动区，位于C0-H0-S1（柱面0，磁头0，扇区1的缩写）
 ; 指定内存的地址，必须同时指定段寄存器，如果省略DS作为默认的段寄存器
 ; 调用BIOS命令时，ES:BX=缓冲地址；(校验及寻道时不使用)
 ;     返回值：FLACS.CF==0：没有错误，AH==0 
 ;             FLAGS.CF==1：有错误，错误号码存入AH内（与重置（reset）功能一样）
 	MOV  AX,0x0820
-	MOV  ES,AX      ; 指定[ES:BX]为读取的位置，加载到ES*16+AX=0x8200位置
+	MOV  ES,AX      ; 指定[ES:BX]为读取的位置，加载到ES*16+BX=0x8200位置
 	MOV  CH,0       ; 柱面0
 	MOV  DH,0       ; 磁头0
 	MOV	 CL,2		; 扇区2
 	MOV  BX,18*2*CYLS-1 ; 要读取的合计扇区
-	CALL readfast   ; 告诉读取
+	CALL readfast   ; 调用读取
 	
 ; 读取结束，运行haribote.sys
 	MOV		BYTE [0x0ff0],CYLS  ; IPL实际读取了多少内容
@@ -87,7 +87,7 @@ readfast:      ;使用AL尽量一次性读取数据
 	MOV		AX,ES			; < 通过ES计算AL最大值 >
 	SHL		AX,3			; AX除以32，结果存入AH
 	AND		AH,0x7f			; AH是AH除以128所得的余数（512*128=64K）
-	MOV		AL,128			; AL = 128 - AH; AH是AH除以128所得的余数（512*128=64K）
+	MOV		AL,128			; AL = 128 - AH;
 	SUB		AL,AH
 
 	MOV		AH,BL			; < 通过BX计算AL的最大值存入AH >
