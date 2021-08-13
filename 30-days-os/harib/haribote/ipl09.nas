@@ -82,7 +82,7 @@ msg:
 	DB		0
 
 readfast:      ;使用AL尽量一次性读取数据
-; ES: 读取地址   CH:柱面  DH:磁头  CL:扇区  BX:读取的扇区
+; ES: 读取地址   CH:柱面  DH:磁头  CL:扇区  BX:合计要读取的扇区
 
 	MOV		AX,ES			; < 通过ES计算AL最大值 >
 	SHL		AX,3			; AX除以32，结果存入AH
