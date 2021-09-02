@@ -226,3 +226,74 @@ pipelineflush:
 这里其实我们是重置下段寄存器的值，要强调的一点是段寄存器赋值段描述符号*8才能访问到该段描述符。我们这里初始化段寄存器的值均指向1号段描述符。
 
 #### 传送操作系统代码
+之后后边的代码就是将内存中操作系统的代码进行转移
+```
+; bootpack传送
+	MOV	 ESI,bootpack	; 传送源
+	MOV	 EDI,BOTPAK		; 传送目的
+	MOV	 ECX,512*1024/4
+	CALL memcpy
+
+; 磁盘数据最终传送到本来位置
+
+; 启动区
+	MOV		ESI,0x7c00		; 传送源
+	MOV		EDI,DSKCAC		; 传送目的
+	MOV		ECX,512/4
+	CALL	memcpy
+
+; 剩下的
+	MOV		ESI,DSKCAC0+512	; 传送源
+	MOV		EDI,DSKCAC+512	; 传送目的
+	MOV		ECX,0
+	MOV		CL,BYTE [CYLS]
+	IMUL	ECX,512*18*2/4	; 柱面数变换为字节数除以4
+	SUB		ECX,512/4		; 减去IPL
+	CALL	memcpy
+```
+这时我们再回头看最前边定义的那几个变量的值了<br>
+第一个部分，将bootpack处的代码拷贝512K的大小到BOTPAK（0x00280000）位置，512的大小保证bootpack这块代码能够全部拷贝过去。bootpack的标签是在asmhead的结尾处，因为本来这两部分就是紧挨着在一起<br>
+第二部分是拷贝启动区，一个扇区到DSKCAC（0x00100000）位置处，大家看刚好是大于1M位置处。<br>
+第三部分则是把asmhead和bootpack全部拷贝到DSKCAC+512处，这里剩下的意思是说除去启动区，因为我们已经拷贝了启动区，所以计算大小的时候也要减去IPL的大小（cyls\*18\*512*2/4 - 512/4）, CYLS是0x0ff0，这个数值大家如果有印象的话，在ipl09.nas里是将要拷贝的柱面数存储到这个内存地址<br>
+另外memcpy的拷贝的单位是4字节，所以传送的大小都需要除以4<br><br>
+
+```
+; bootpack启动
+; 解析bootpack的头部，值可能不同
+; [EBX+16] bootpack.hrb的第16号地址，是0x11a8
+; [EBX+20] bootpack.hrb的第20号地址，是0x10c8
+; [EBX+12] bootpack.hrb的第12号地址，是0x00310000
+; 复制[EBX+20]开始[EBX+16]的字节复制到[EBX+12]地址去
+	MOV		EBX,BOTPAK
+	MOV		ECX,[EBX+16]
+	ADD		ECX,3			; ECX += 3;
+	SHR		ECX,2			; ECX /= 4;
+	JZ		skip			; JZ jump zero
+	MOV		ESI,[EBX+20]	; 転送元
+	ADD		ESI,EBX
+	MOV		EDI,[EBX+12]	; 転送先
+	CALL	memcpy
+skip:
+	MOV		ESP,[EBX+12]	; 栈初始值
+	JMP		DWORD 2*8:0x0000001b  ; 2*8放入CS里，移动0x1b地址，即到0x280000+0x1b,开始执行bootpack
+```
+做完这些准备工作，我们来启动bootpack，首先是解析bootpack的头部数据，然后分别取出开头偏移16，20，12字节的值，然后复制[EBX+20]开始[EBX+16]的字节复制到[EBX+12]地址去，这里后边再说。\*<br>
+再然后就是到skip标签这里，初始化ESP（栈顶寄存器）的值，初始化CS:IP的值，就可以跳转到bootpack执行了。这里CS指定了第二号段，即为我们之前设置的bootpack的代码段，IP偏移是0x1b*。
+
+> 栈段通常也是作为数据段来存在的，访问方式为SS:BP(实模式)或者SS:EBP(保护模式)，同样SS也是作为一个选择子，这里是先把SS和DS等都初始化为0，只有CS是2*8，目前我们也只用到代码段。
+
+<br>
+再后边就是waitkbdout和memcpy函数，这里也不再讨论了，然后作者为了提高效率，一些mov指令等执行会快速，作者还使用了ALIGNB	16来做到字节对齐
+
+
+#### 内存布局
+
+经过作者的一番调整，我们进入到了保护模式，但其中的代码所存放的地址大家可能有点记不得了，作者还提供了内存分布的图
+
+
+### 总结
+这篇文章东西比较多，相对来说比较难理解
+* 首先我们将设置画面模式，使用VBE可以设置到高分辨率的画面，这里还是使用BIOS的中断
+* 然后我们将切换到保护模式，主要是分为三步：打开A20，加载GDT，将cr0的PE位设置为1
+* 最后我们把操作系统的代码在内存的位置进行了整理
+* 提供给大家内存分布的图供参考

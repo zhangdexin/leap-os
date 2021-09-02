@@ -174,9 +174,9 @@ pipelineflush:
 
 ; bootpack启动
 ; 解析bootpack的头部，值可能不同
-; [EBX+16] bootpack.hrb的第16号地址，是0x11a8
-; [EBX+20] bootpack.hrb的第20号地址，是0x10c8
-; [EBX+12] bootpack.hrb的第12号地址，是0x00310000
+; [EBX+16] bootpack.hrb的第16号地址，值是0x11a8
+; [EBX+20] bootpack.hrb的第20号地址，值是0x10c8
+; [EBX+12] bootpack.hrb的第12号地址，值是0x00310000
 ; 复制[EBX+20]开始[EBX+16]的字节复制到[EBX+12]地址去
 	MOV		EBX,BOTPAK
 	MOV		ECX,[EBX+16]
