@@ -6,3 +6,4 @@
 [04.实模式切换到保护模式-1](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/04-mode_switch.md)<br/>
 [05.实模式切换到保护模式-2](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/05-mode_switch_2.md)<br/>
 [06.内存管理](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/06-memory.md)<br/>
+[07.GDT初始化和中断](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/07-interrupt.md)<br/>
