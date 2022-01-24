@@ -48,7 +48,7 @@ void init_gdtidt(void)
 	load_idtr(LIMIT_IDT, ADR_IDT);
 
 	/* IDT的設定 */
-	// 0x20~0x2f用于中断信号
+	// 0x20~0x2f用于外部中断信号
 	// 0x00~0x1f,操作系统使用，应用程序触发操作系统保护时，触发中断0x00~0x1f
 	set_gatedesc(idt + 0x0c, (int) asm_inthandler0c, 2 * 8, AR_INTGATE32);
 	set_gatedesc(idt + 0x0d, (int) asm_inthandler0d, 2 * 8, AR_INTGATE32);

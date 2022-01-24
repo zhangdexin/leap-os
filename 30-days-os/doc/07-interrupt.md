@@ -131,23 +131,11 @@ struct GATE_DESCRIPTOR {
 	short offset_high;
 };
 ```
-
-```c
-// dsctbl.c
-void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar)
-{
-	gd->offset_low   = offset & 0xffff;
-	gd->selector     = selector;
-	gd->dw_count     = (ar >> 8) & 0xff;
-	gd->access_right = ar & 0xff;
-	gd->offset_high  = (offset >> 16) & 0xffff;
-	return;
-}
-```
+这里是中断描述符的结构，从低位到高位依次是低16位的偏移值（offset_low）,选择子（selecttor），默认或者未使用的8位（dw_count）,权限及类型设定（access_right）,高16位的偏移（offset_high）。
 
 ```c
 // bootpack.h
-#define ADR_GDT			0x00270000
+#define ADR_IDT			0x0026f800
 #define LIMIT_GDT		0x0000ffff
 #define AR_INTGATE32	0x008e
 
@@ -175,6 +163,33 @@ void init_gdtidt(void)
 	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 * 8, AR_INTGATE32);
 	set_gatedesc(idt + 0x40, (int) asm_hrb_api, 2 * 8, AR_INTGATE32 + 0x60); // +0x60表示应用程序可以使用该中断号
     
+	return;
+}
+```
+
+同样也是在init_gdtidt函数中来初始化IDT，首先把idt中每个描述符设为0，LIMIT_IDT是8192，每个描述符8字节，8192/8是描述符的数量。然后调用load_idtr来设置中断描述符表寄存器。load_idtr也是必须用汇编来写。
+```
+; naskfunc.c
+_load_idtr:		; void load_idtr(int limit, int addr);
+		MOV		AX,[ESP+4]		; limit
+		MOV		[ESP+6],AX
+		LIDT	[ESP+6]
+		RET
+```
+将limit和addr组合在一起（6字节），使用LIDT加载到中断描述符表寄存器中。
+我们再回到init_gdtidt中，下面就是为每个中断向量号设置中断处理程序，中断向量号对应0x00到0x1f（0~31）已经cpu设定好的中断类型，准确来说是0~19是设定好的，20~31是预留的。但是我们也还是要自己来写中断处理程序。这里比如说0x0c是栈段发生错误，0x0d是一般的保护错误，这里我们后边会讲到，那么留给操作系统自己设定的就是0x20~0xff(32~255)号的中断。
+```c
+set_gatedesc(idt + 0x20, (int) asm_inthandler20, 2 * 8, AR_INTGATE32);
+```
+以这个为例，设定0x20的中断处理程序，asm_inthandler20是中断处理程序（也即在目标代码段的偏移），设定目标代码段是2（2*8表示）号，AR_INTGATE32的具体内容我们结合set_gatedesc函数一同看下：
+```c
+void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar)
+{
+	gd->offset_low   = offset & 0xffff;
+	gd->selector     = selector;
+	gd->dw_count     = (ar >> 8) & 0xff;
+	gd->access_right = ar & 0xff;
+	gd->offset_high  = (offset >> 16) & 0xffff;
 	return;
 }
 ```
