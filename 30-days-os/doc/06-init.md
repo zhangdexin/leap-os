@@ -11,16 +11,16 @@
 void HariMain(void)
 {
     struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	struct FIFO32 fifo, keycmd;
-	int fifobuf[128], keycmd_buf[32];
-	char s[40];
-	int mx, my, i, j;
-	unsigned int memtotal;
-	struct MOUSE_DEC mdec;
-	struct MEMMAN* memman = (struct MEMMAN*)MEMMAN_ADDR;
-	struct SHTCTL *shtctl;
-	struct SHEET* sht_back, *sht_mouse;
-	unsigned char* buf_back, buf_mouse[256];
+    struct FIFO32 fifo, keycmd;
+    int fifobuf[128], keycmd_buf[32];
+    char s[40];
+    int mx, my, i, j;
+    unsigned int memtotal;
+    struct MOUSE_DEC mdec;
+    struct MEMMAN* memman = (struct MEMMAN*)MEMMAN_ADDR;
+    struct SHTCTL *shtctl;
+    struct SHEET* sht_back, *sht_mouse;
+    unsigned char* buf_back, buf_mouse[256];
     static char keytable0[0x80] = { //... (略)};
     static char keytable1[0x80] = { //... (略)};
 
@@ -29,14 +29,14 @@ void HariMain(void)
 
     // 初始化中断
     init_gdtidt();
-	init_pic();
-	io_sti(); /* IDT/PIC初始化完成，开发CPU中断 */
+    init_pic();
+    io_sti(); /* IDT/PIC初始化完成，开发CPU中断 */
 
     init_pit(); // 初始化pit
-	init_keyboard(&fifo, 256);
-	enable_mouse(&fifo, 512, &mdec);
-	io_out8(PIC0_IMR, 0xf8); /*PIT和开发PIC1和键盘中断(11111000) */
-	io_out8(PIC1_IMR, 0xef); /* 开放鼠标中断(11101111) */
+    init_keyboard(&fifo, 256);
+    enable_mouse(&fifo, 512, &mdec);
+    io_out8(PIC0_IMR, 0xf8); /*PIT和开发PIC1和键盘中断(11111000) */
+    io_out8(PIC1_IMR, 0xef); /* 开放鼠标中断(11101111) */
 
     //// 初始化内存管理   ////
     //... (略)
