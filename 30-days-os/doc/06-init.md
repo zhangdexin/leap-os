@@ -44,11 +44,11 @@ void HariMain(void)
     //... (略)
 
     // 初始化画面
-	init_palette();
+    init_palette();
     //... (略)
 
     // 初始化任务
-	task_a = task_init(memman);
+    task_a = task_init(memman);
     //... (略)
 
     for (;;) {
@@ -156,10 +156,10 @@ cpu执行程序的代码段为系统模式，则cpu在系统模式下执行，�
 ```
 // naskfunc.nas
 _load_gdtr:		; void load_gdtr(int limit, int addr);
-		MOV		AX,[ESP+4]		; limit
-		MOV		[ESP+6],AX
-		LGDT	[ESP+6]
-		RET
+	MOV     AX,[ESP+4]		; limit
+	MOV	[ESP+6],AX
+	LGDT	[ESP+6]
+	RET
 ```
 最后一步就是loadgdt，即将gdt的地址和上限加载到gdtr的寄存器中，这个寄存器有48位宽（6字节），这里ESP+4存放的是第一个参数limit，ESP+8存放的是addr，这里将limit移后2位，可以一次性将limit和addr都加载到gdtr中。
 
