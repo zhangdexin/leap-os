@@ -8,7 +8,7 @@ DSKCAC	EQU		0x00100000		; 磁盘缓存位置
 DSKCAC0	EQU		0x00008000		; 磁盘缓存位置（实时模式）
 
 ; 有关BOOT_INFO存放地址
-CYLS	EQU		0x0ff0			; 设定启动区
+CYLS	EQU		0x0ff0			; 柱面数
 LEDS	EQU		0x0ff1
 VMODE	EQU		0x0ff2			; 关于颜色数目信息，颜色位数
 SCRNX	EQU		0x0ff4			; 分辨率x
@@ -139,7 +139,7 @@ keystatus:
 ; 进入保护模式，段寄存器意思发生改变，除了CS以外所有段寄存器值从0x0000变成0x0008
 ; 0x0008相当于gdt+1的段
 pipelineflush:
-	MOV	 AX,1*8			;  読み書き可能セグメント32bit
+	MOV	 AX,1*8
 	MOV	 DS,AX
 	MOV	 ES,AX
 	MOV	 FS,AX

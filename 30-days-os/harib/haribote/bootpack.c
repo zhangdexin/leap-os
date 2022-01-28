@@ -143,6 +143,7 @@ void HariMain(void)
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
 
+	// 初始化任务
 	task_a = task_init(memman);
 	fifo.task = task_a;
 	task_run(task_a, 1, 0);
