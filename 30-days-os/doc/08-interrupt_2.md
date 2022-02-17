@@ -13,20 +13,25 @@ init_pic();
 #### PIC
 ##### PIC芯片及信号线
 我们来大致讲一下PIC吧，不然后边的代码会把大家搞晕。单独一个PIC芯片只有8个中断信号请求（IRQ<Interrupt ReQuest>）线:IRQ0~IRQ7，也就是说可以控制8个中断信号，这肯定是不够的，PIC采用了级联的方式来实现增加中断请求，如图所示：
-图
+<img src="https://user-images.githubusercontent.com/22785392/154479500-dee75ab8-8e65-4c62-b0de-af826efb8806.png" width="60%" height="60%" />
+  
 我们个人电脑只有两个PIC芯片，通过主PIC芯片IRQ2连接从PIC芯片。每一个IRQ会代表一种类型的中断，比如说IRQ0是时钟中断，IRQ1是键盘...
 
 ##### PIC处理信号流程
 除此之外，我们还需要看下PIC内部大体的构造，如图所示：
-图
+<img src="https://user-images.githubusercontent.com/22785392/154481729-fc2f370f-4963-446a-941b-bf644a79b930.png" width="60%" height="60%" />
+ 
 * INT:PIC芯片选择出来最高优先级中断请求，发送给CPU
 * INTA: PIC芯片来接收CPU发来的中断响应信号
 * IMR: Interrupt Mask Register, 中断屏蔽寄存器（8位），用来屏蔽来自外设的中断
 * IRR: Interrupt Request Register, 中断请求寄存器（8位），保存经过IMR后等待处理的中断请求，相当于维护一个等待处理的中断队列
 * PR: Priority Resoler, 优先级判别器，用来找出优先级最高的中断
 * ISR: Interrupt Service Register, 中断服务寄存器（8位），保存正在被CPU出来的寄存器。
+  
 简单描述下原理：
+  
 当外设发出中断信号经过IRQ到达PIC内部时，首先到IMR处理，看IMR是否屏蔽了该IRQ的信号（IMR是8位(分别对应IRQ0~7)的寄存器，该位为1表示屏蔽）,如果屏蔽就丢弃这个信号，如果没有屏蔽信号进入到IRR(IRR也是8为寄存器，相应位为1则表示有该信号需要处理)保存。然后PR会从IRR中选择一个优先级最高的中断通过INT发送给CPU，当CPU处理完手头工作后会通过INTA发送给PIC芯片一个ack，然后PIC就会将ISR中相应的位置1，IRR中相应位置0，之后CPU会再次发送一个INTA信号给PIC（这里是CPU向PIC索要中断信号），PIC芯片会将初始中断向量号（后边讲到）+IRQ号发送给CPU，然后CPU就会执行相应的中断处理程序了。
+  
 那么当CPU处理完之后，如果PIC设置的EOI(End Of Interrupt)通知模式为手工模式，中断处理程序在结束处需要向PIC发送通知，PIC收到通知表示知道这个中断结束了。如果PIC设置EOI为自动模式，PIC在收到CPU索要中断向量号时就认为结束了，那么PIC认为结束时就会将ISR相应位置0，接着就等下一个中断来了。
 ##### PIC的设置寄存器
 
