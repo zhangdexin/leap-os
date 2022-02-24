@@ -53,6 +53,68 @@ init_pic();
 我们代码就只用了OCW来设置结束标识，我们也就不展开讲了。
 
 ### 设置PIC
+大致的中断的知识我们也讲到这里，我们接下来看下代码，看下init_pic函数里边对PIC进行了什么设置
 
+```C++
+// bootpack.h
+#define PIC0_ICW1  0x0020
+#define PIC0_OCW2  0x0020
+#define PIC0_IMR  0x0021
+#define PIC0_ICW2  0x0021
+#define PIC0_ICW3  0x0021
+#define PIC0_ICW4  0x0021
+#define PIC1_ICW1  0x00a0
+#define PIC1_OCW2  0x00a0
+#define PIC1_IMR  0x00a1
+#define PIC1_ICW2  0x00a1
+#define PIC1_ICW3  0x00a1
+#define PIC1_ICW4  0x00a1
 
-### 内存结构图
+// int.c
+void init_pic(void)
+/* PIC的初始化 */
+{
+ io_out8(PIC0_IMR,  0xff  ); /* 禁止所有中断 */
+ io_out8(PIC1_IMR,  0xff  ); /* 禁止所有中断 */
+
+ io_out8(PIC0_ICW1, 0x11  ); /* 边沿触发模式, 级联, 要写入ICW4*/
+ io_out8(PIC0_ICW2, 0x20  ); /* IRQ0-7由INT20-27接收 */
+ io_out8(PIC0_ICW3, 1 << 2); /* PIC0与IRQ2连接设定 */
+ io_out8(PIC0_ICW4, 0x01  ); /* 无缓冲模式 */
+
+ io_out8(PIC1_ICW1, 0x11  ); /* 边沿触发模式, 级联, 要写入ICW4 */
+ io_out8(PIC1_ICW2, 0x28  ); /* IRQ8-15由INT28-2f接收 */
+ io_out8(PIC1_ICW3, 2     ); /* PIC1与IRQ2连接设定 */
+ io_out8(PIC1_ICW4, 0x01  ); /* 无缓冲模式 */
+
+ io_out8(PIC0_IMR,  0xfb  ); /* 11111011 PIC1以外全部禁止 */
+ io_out8(PIC1_IMR,  0xff  ); /* 11111111 禁止所有中断 */
+
+ return;
+}
+```
+* 首先通过设置IMR禁用所有的中断，我们上边也提到过IMR中会存放是否禁用了该类型的中断，0xff二进制全是1表示所有的外部到来的中断都屏蔽掉。
+* 然后通过设置主片的ICW1, 设置为0x11： IC4位是1，表示要使用ICW4，SNGL位是0，会级联，ICW3也会被使用。LTIM位是0，边沿触发模式。
+* 然后设置主片的ICW2，起始的中断向量号0x20，那么后边每次中断号都是IRQ号加上起始中断向量号发送给CPU，比如说键盘的中断向量号是0x21，这样我们结合上节讲到的asm_inthandler21中断处理程序就说键盘的中断处理程序。
+* 设置主片ICW3，主片的IRQ2和从片(PCI1)连接
+* 设置主片ICW4，0x01:非缓冲模式，AEOI通知时手动通知，即中断结束时需要手动发送结束通知给PIC
+* 从片的设置和主片类似，唯一不同的时从片的ICW3需要设置自己与主片的哪个IRQ相连，这里是2号IRQ。
+* 最后，我们第一步因为在设置PIC的时候首先需要把外部中断禁用，不然可能会有错乱。等设置完成后，我们最开始初始时基本也只是打开了PIC0(主片)和PIC1(从片)连接的中断，其他也还是屏蔽掉，后边我们如果需要接受哪个中断就打开哪个。
+
+然后上边也说到了我们结束通知模式是手动的，那我们看下如何通知给PIC呢，我们还是以asm_inthandler21->inthandler21 这个中断处理程序为例：
+```C++
+// keyboard.c
+
+void inthandler21(int *esp)
+{
+	int data;
+	io_out8(PIC0_OCW2, 0x61);	/* 通知PIC"IRQ-01"已经受理完成 */
+	data = io_in8(PORT_KEYDAT);
+	fifo32_put(keyfifo, data + keydata0);
+	return;
+}
+```
+上边我们也看到io_out8(PIC0_OCW2, 0x61)这句代码即为向PIC告知中断处理完成，我们也不展开说了。
+
+### 总结
+到这里我们已经把中断的基本知识讲完，同时也讲了下代码中关于初始化中断的部分进行讲解，我们回忆总结下，初始化中断基本就是设置IDT，表示中断发生时，CPU通过中断向量号能够找到中断处理程序。那么中断怎么来，一部分是程序中写的INT指令等触发的软中断，还有一部分是外部中断的触发，那么如何设置能够接受到外部中断呢，那就是通过设置PIC即可。
