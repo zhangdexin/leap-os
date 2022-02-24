@@ -38,6 +38,8 @@ init_pic();
 除了上边所说的PIC的结构，PIC还有两组寄存器，一组是初始化命令寄存器用来初始化命令字（Initialization Command Words， ICW），ICW共四个ICW1～ICW4。另外一种是操作命令寄存器，用来保存操作命令字的（Operation Command Word，OCW），OCW共三个OCW1～OCW3。所以我们对PIC的设置，分为初始化和操作两部分。
 
 用ICW做初始化的主要功能包括：是否需要级联，设置起始中断向量号，设置中断结束模式。如何设置呢？就是从CPU往PIC系列端口写入数据。并且写入要按照严格的顺序写入，避免关联依赖的一些问题。
+  
+<img width="50%" height="50%" src="https://user-images.githubusercontent.com/22785392/155432195-5f55abce-342c-478a-b7ee-16b7bd81a06b.png" />
 
 我画了下ICW的图，如图所示，我一个一个来解释下：
 1. ICW1主要功能是设置连接方式和中断信号触发方式。连接方式是指用单片工作还是多片级联工作，信号触发方式是电平触发还是边沿触发。
