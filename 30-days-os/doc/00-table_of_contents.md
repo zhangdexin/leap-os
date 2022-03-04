@@ -9,3 +9,4 @@
 [07.关于中断及设置](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/07-interrupt.md)<br/>
 [08.关于中断及设置-2](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/08-interrupt_2.md)<br/>
 [09.内存管理](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/09-memory.md)<br/>
+[10.一个简单的队列](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/10-fifo.md)<br/>
