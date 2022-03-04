@@ -7,8 +7,9 @@
 我们代码中就是在bootpack.c的main函数处：
 ```
 init_pic();
+io_sti();
 ```
-也就是说我们也对PIC进行一下设定，他才会发送给CPU中断号，进而去处理中断。
+也就是说init_pic就是我们也对PIC进行一下设定，他才会发送给CPU中断号，进而去处理中断。
 
 #### PIC
 ##### PIC芯片及信号线
@@ -74,23 +75,23 @@ init_pic();
 void init_pic(void)
 /* PIC的初始化 */
 {
- io_out8(PIC0_IMR,  0xff  ); /* 禁止所有中断 */
- io_out8(PIC1_IMR,  0xff  ); /* 禁止所有中断 */
+    io_out8(PIC0_IMR,  0xff  ); /* 禁止所有中断 */
+    io_out8(PIC1_IMR,  0xff  ); /* 禁止所有中断 */
 
- io_out8(PIC0_ICW1, 0x11  ); /* 边沿触发模式, 级联, 要写入ICW4*/
- io_out8(PIC0_ICW2, 0x20  ); /* IRQ0-7由INT20-27接收 */
- io_out8(PIC0_ICW3, 1 << 2); /* PIC0与IRQ2连接设定 */
- io_out8(PIC0_ICW4, 0x01  ); /* 无缓冲模式 */
+    io_out8(PIC0_ICW1, 0x11  ); /* 边沿触发模式, 级联, 要写入ICW4*/
+    io_out8(PIC0_ICW2, 0x20  ); /* IRQ0-7由INT20-27接收 */
+    io_out8(PIC0_ICW3, 1 << 2); /* PIC0与IRQ2连接设定 */
+    io_out8(PIC0_ICW4, 0x01  ); /* 无缓冲模式 */
 
- io_out8(PIC1_ICW1, 0x11  ); /* 边沿触发模式, 级联, 要写入ICW4 */
- io_out8(PIC1_ICW2, 0x28  ); /* IRQ8-15由INT28-2f接收 */
- io_out8(PIC1_ICW3, 2     ); /* PIC1与IRQ2连接设定 */
- io_out8(PIC1_ICW4, 0x01  ); /* 无缓冲模式 */
+    io_out8(PIC1_ICW1, 0x11  ); /* 边沿触发模式, 级联, 要写入ICW4 */
+    io_out8(PIC1_ICW2, 0x28  ); /* IRQ8-15由INT28-2f接收 */
+    io_out8(PIC1_ICW3, 2     ); /* PIC1与IRQ2连接设定 */
+    io_out8(PIC1_ICW4, 0x01  ); /* 无缓冲模式 */
 
- io_out8(PIC0_IMR,  0xfb  ); /* 11111011 PIC1以外全部禁止 */
- io_out8(PIC1_IMR,  0xff  ); /* 11111111 禁止所有中断 */
+    io_out8(PIC0_IMR,  0xfb  ); /* 11111011 PIC1以外全部禁止 */
+    io_out8(PIC1_IMR,  0xff  ); /* 11111111 禁止所有中断 */
 
- return;
+    return;
 }
 ```
 * 首先通过设置IMR禁用所有的中断，我们上边也提到过IMR中会存放是否禁用了该类型的中断，0xff二进制全是1表示所有的外部到来的中断都屏蔽掉。
@@ -115,6 +116,30 @@ void inthandler21(int *esp)
 }
 ```
 上边我们也看到io_out8(PIC0_OCW2, 0x61)这句代码即为向PIC告知中断处理完成，我们也不展开说了。
+
+### 允许中断
+我们再回到bootpack.c的文件中，init_pic()后还有一行代码：
+```c
+io_sti();
+```
+这个的意思就是允许中断进来，这里相当于CPU接受外部中断的信号线可以通过中断。看下它内部详细情况，调用的是汇编代码：
+```
+; naskfunc.nas
+_io_sti:	; void io_sti(void); 允许中断
+		STI
+		RET
+```
+仅仅是使用STI汇编指令，这个指令实际就是将eflags寄存器IF（interrupt flag，中断许可标志位）位置为1，CPU也是通过这个这个寄存器来设置是否要禁止外部中断进来。这里和PIC的IMR寄存器不一样的，IMR是屏蔽外部发给PIC的中断，eflags是CPU屏蔽PIC发来的中断。
+STI是允许中断指令，屏蔽中断指令是CLI。也即是将eflags寄存器的IF位置0。作者也封装了一个汇编的函数：
+```
+; naskfunc.nas
+
+_io_cli:	; void io_cli(void); 禁止中断
+		CLI
+		RET
+```
+后边我们也会用到
+
 
 ### 总结
 到这里我们已经把中断的基本知识讲完，同时也讲了下代码中关于初始化中断的部分进行讲解，我们回忆总结下，初始化中断基本就是设置IDT，表示中断发生时，CPU通过中断向量号能够找到中断处理程序。那么中断怎么来，一部分是程序中写的INT指令等触发的软中断，还有一部分是外部中断的触发，那么如何设置能够接受到外部中断呢，那就是通过设置PIC即可。
