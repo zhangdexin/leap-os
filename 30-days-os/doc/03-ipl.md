@@ -7,7 +7,7 @@
 #### CPU的寻址空间
 很久之前，intel的cpu 8086有20根地址线，能够访问的地址20位长，即2的20次方=1M，16进制表示的话0x00000到0xFFFFF。
 所以cpu刚刚开机的时候能够访问的内存地址是1M，这个被称做实模式。CPU可以访问的1M地址并不是完全分给内存。
-![image](https://user-images.githubusercontent.com/22785392/127582498-e7e03033-c5de-4fba-8cc9-fcad9e176d36.png)
+<img width="60%" height="60%" src="https://user-images.githubusercontent.com/22785392/127582498-e7e03033-c5de-4fba-8cc9-fcad9e176d36.png" />
 如图，CPU的寻址空间0x00000～0x9FFFF(640K)是分给内存的，0xA0000~0xBFFFF(128K)是分给了显卡的，剩下的256K是分给了ROM里的BIOS。
 我们经常会说到我的CPU的32位的那么寻址空间就是4G，但是这4G并不是完全分到内存，所以我们看到电脑会显示内存只使用了3.8G左右的原因了
 
