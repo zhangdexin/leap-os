@@ -269,7 +269,7 @@ struct TIMER {
 };
 
 struct TIMERCTL {
-	unsigned int count, next; // next指下一个时刻, using记录有多少个timer在活动中
+	unsigned int count, next; // next指下一个时刻
 	struct TIMER* t0; // 存放排好序的timer地址
 	struct TIMER timers0[MAX_TIMER];
 };
