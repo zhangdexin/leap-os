@@ -49,6 +49,7 @@ void inthandler20(int *esp)
         return ; // 判断下一个时刻是否超时
     }
 
+    // 查看有多少个定时器超时
     timer = timerctl.t0;
     for (;;) {
         if (timer->timeout > timerctl.count) {

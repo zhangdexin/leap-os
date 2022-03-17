@@ -45,8 +45,8 @@ void inthandler20(int *esp)
 
 	io_out8(PIC0_OCW2, 0x60);	/* 通知PIC"IRQ-00"已经受理完成 */
     timerctl.count++;
-    if (timerctl.next > timerctl.count) {
-        return ; // 判断下一个时刻是否超时
+    if (timerctl.next > timerctl.count) { // 判断下一个时刻是否超时
+        return ; 
     }
 
     timer = timerctl.t0;
