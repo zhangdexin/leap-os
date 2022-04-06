@@ -11,3 +11,5 @@
 [09.内存管理](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/09-memory.md)<br/>
 [10.一个简单的队列](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/10-fifo.md)<br/>
 [11.定时器](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/11-timer.md)<br/>
+[12.图像显示](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/12-graphic.md)<br/>
+[13.图层管理](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/13-sheets.md)<br>
