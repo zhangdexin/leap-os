@@ -177,3 +177,182 @@ xsize这里传入的buffer最终画出来图像的宽度，这里也就是屏幕
 来看下画出来的屏幕是啥样的吧：
 <img src=https://user-images.githubusercontent.com/22785392/162738625-edb3e7bf-3dba-4808-b116-189c65affd5d.png width="60%" height="60%" />
 
+### 鼠标的画面
+如此我们再来画一下鼠标的画面，先来看下相关的代码：
+```c
+// graphic.c
+void init_mouse_cursor8(char *mouse, char bc)
+/* 准备鼠标指针（16x16） */
+{
+	static char cursor[16][16] = {
+		"**************..",
+		"*OOOOOOOOOOO*...",
+		"*OOOOOOOOOO*....",
+		"*OOOOOOOOO*.....",
+		"*OOOOOOOO*......",
+		"*OOOOOOO*.......",
+		"*OOOOOOO*.......",
+		"*OOOOOOOO*......",
+		"*OOOO**OOO*.....",
+		"*OOO*..*OOO*....",
+		"*OO*....*OOO*...",
+		"*O*......*OOO*..",
+		"**........*OOO*.",
+		"*..........*OOO*",
+		"............*OO*",
+		".............***"
+	};
+	int x, y;
+
+	for (y = 0; y < 16; y++) {
+		for (x = 0; x < 16; x++) {
+			if (cursor[y][x] == '*') {
+				mouse[y * 16 + x] = COL8_000000;
+			}
+			if (cursor[y][x] == 'O') {
+				mouse[y * 16 + x] = COL8_FFFFFF;
+			}
+			if (cursor[y][x] == '.') {
+				mouse[y * 16 + x] = bc;
+			}
+		}
+	}
+	return;
+}
+```
+因为涉及到图层的关系，我们并不是把鼠标直接画到显存，而是先写入到一个缓冲区mouse，鼠标单独自己是一个图层，之后只要把这个缓冲区（图层）画到显存即可，关于画到显存中我们讲到图层管理就知道了，这里我们只考虑画到这个缓冲区中即可。设定这个缓冲区保存的是16*16的画像，图像内容（cursor）我们写出来了。\*的地方黑色，0的地方白色，.的地方画成bc这个颜色。bc这个颜色其实是这个图层的透明色，当后边讲到图层管理，只需要把这个颜色的地方设置成下一个图层的颜色就可以达到透明的效果。
+
+### 字体的画面
+我们学习上边关于鼠标的绘制，那么文字的绘制也是类似，相当于也是提供一个字符图像，然后根据不同字符设置不同颜色。这个字符图像是在hankaku.txt，可以简单看下这里边的内容：
+[图]
+作者使用makefont.exe转化为成hankaku.bin，再用bin2obj.exe转为obj使用，这里的转化是将.会转为0，*转为1，一行存成一个字符，比如```..***...```转为00111000, 存为char就是111000。
+```c
+extern char hankaku[4096];
+```
+使用extern就可以使用到这个变量，且hankaku中存放是按照acsii码存放了256个字符，每个字符有16行，那么访问只需要是hankaku+ascii码*16开始的16字节。比如说A就是hankaku+0x41\*16开始的16字节（16行）
+看下显示字符的代码：
+```c
+// graphic.c
+void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s)
+{
+	extern char hankaku[4096];
+	struct TASK *task = task_now();
+	char *nihongo = (char *) *((int *) 0x0fe8), *font;
+	int k, t; // k存放区号， t存放点号
+
+	if (task->langmode == 0) { // 英文
+		for (; *s != 0x00; s++) {
+			putfont8(vram, xsize, x, y, c, hankaku + *s * 16);
+			x += 8;
+		}
+	}
+	if (task->langmode == 1) { // 日文半角和shift-jis模式
+		// ...(略)
+	}
+	if (task->langmode == 2) { // 日文EUC模式
+		// ...(略)
+	}
+	return;
+}
+```
+关于显示日文这里不讲解了，我们只看英文字体的。vram也是写入字体的缓冲区，xsize是这个缓冲区表示画面的宽度，(x,y)指这个画面中(x,y)位置作为绘制字体的左上角，c指颜色号，s是要写的字符串。```for (; *s != 0x00; s++)```这个循环表示一个字符一个字符的画出来， putfont8显然就是画一个字符。
+```c
+// graphic.c
+void putfont8(char *vram, int xsize, int x, int y, char c, char *font)
+{
+	int i;
+	char *p, d /* data */;
+	for (i = 0; i < 16; i++) {
+		p = vram + (y + i) * xsize + x;
+		d = font[i];
+		if ((d & 0x80) != 0) { p[0] = c; }
+		if ((d & 0x40) != 0) { p[1] = c; }
+		if ((d & 0x20) != 0) { p[2] = c; }
+		if ((d & 0x10) != 0) { p[3] = c; }
+		if ((d & 0x08) != 0) { p[4] = c; }
+		if ((d & 0x04) != 0) { p[5] = c; }
+		if ((d & 0x02) != 0) { p[6] = c; }
+		if ((d & 0x01) != 0) { p[7] = c; }
+	}
+	return;
+}
+```
+上边我们说到了把一个字符的一行转化为一个字符，putfont8就是根据这个字符中二进制位中1就画上颜色c。'd & 0x80'即为d和0x1000000做与运算，能够判断出最高位是不是1，剩下的与运算依次类推。就能设置了vram中颜色了，在把这个缓冲区画到显存就能显示文字。
+
+### 一个窗口的画面
+接下来我们讲一下如何画出来一个窗口，其实我们有了上边接触，应该就能够画出来一个窗口了吧，很多也都是重复性的工作。
+```c
+// window.c
+void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act)
+{
+	boxfill8(buf, xsize, COL8_C6C6C6, 0,         0,         xsize - 1, 0        );
+	boxfill8(buf, xsize, COL8_FFFFFF, 1,         1,         xsize - 2, 1        );
+	boxfill8(buf, xsize, COL8_C6C6C6, 0,         0,         0,         ysize - 1);
+	boxfill8(buf, xsize, COL8_FFFFFF, 1,         1,         1,         ysize - 2);
+	boxfill8(buf, xsize, COL8_848484, xsize - 2, 1,         xsize - 2, ysize - 2);
+	boxfill8(buf, xsize, COL8_000000, xsize - 1, 0,         xsize - 1, ysize - 1);
+	boxfill8(buf, xsize, COL8_C6C6C6, 2,         2,         xsize - 3, ysize - 3);
+	boxfill8(buf, xsize, COL8_848484, 1,         ysize - 2, xsize - 2, ysize - 2);
+	boxfill8(buf, xsize, COL8_000000, 0,         ysize - 1, xsize - 1, ysize - 1);
+
+	make_wtitle8(buf, xsize, title, act);
+	return;
+}
+```
+我们看到是画了很多的矩形组成一个窗口，另外也都是画在了buf这个缓冲区中，xsize和ysize分别表示窗口的长宽。
+然后我们看make_wtitle8是画了一个窗口的标题栏，把act和titile的字符串传进来
+```c
+void make_wtitle8(unsigned char *buf, int xsize, char *title, char act)
+{
+	static char closebtn[14][16] = {
+		"OOOOOOOOOOOOOOO@",
+		"OQQQQQQQQQQQQQ$@",
+		"OQQQQQQQQQQQQQ$@",
+		"OQQQ@@QQQQ@@QQ$@",
+		"OQQQQ@@QQ@@QQQ$@",
+		"OQQQQQ@@@@QQQQ$@",
+		"OQQQQQQ@@QQQQQ$@",
+		"OQQQQQ@@@@QQQQ$@",
+		"OQQQQ@@QQ@@QQQ$@",
+		"OQQQ@@QQQQ@@QQ$@",
+		"OQQQQQQQQQQQQQ$@",
+		"OQQQQQQQQQQQQQ$@",
+		"O$$$$$$$$$$$$$$@",
+		"@@@@@@@@@@@@@@@@"
+	};
+	int x, y;
+	char c, tc, tbc;
+	if (act != 0) {
+		tc = COL8_FFFFFF;
+		tbc = COL8_000084;
+	} else {
+		tc = COL8_C6C6C6;
+		tbc = COL8_848484;
+	}
+	boxfill8(buf, xsize, tbc, 3, 3, xsize - 4, 20);
+	putfonts8_asc(buf, xsize, 24, 4, tc, title);
+	for (y = 0; y < 14; y++) {
+		for (x = 0; x < 16; x++) {
+			c = closebtn[y][x];
+			if (c == '@') {
+				c = COL8_000000;
+			} else if (c == '$') {
+				c = COL8_848484;
+			} else if (c == 'Q') {
+				c = COL8_C6C6C6;
+			} else {
+				c = COL8_FFFFFF;
+			}
+			buf[(5 + y) * xsize + (xsize - 21 + x)] = c;
+		}
+	}
+	return;
+}
+```
+哈，作者还是用字符写了一个关闭按钮（所有的@构成了x样子），根据不同的字符设置不同的颜色。act的意思表示是这个窗口是否被激活，根据激活状态设置不同的颜色给标题栏和标题文字。然后再来画关闭按钮，```(5 + y) * xsize + (xsize - 21 + x)```这里5是离窗口最上边的距离，```xsize-21```表示是关闭按钮距离左边的位置。
+也可以来看一个窗口的样子：
+[图]
+
+
+### 总结
+这一章我们讲述了怎么画一个画面，虽然多数是画在指定的buf，但是我们知道最终画在前边申请的显存就可以显示了，开始我们需要设定颜色号，需要针对显卡进行设置。然后就可以肆无忌惮的往显存写颜色号就能显示了。这一章我们分别把屏幕背景，鼠标，文字，窗口都画出来了，那么最基本的其实都可以出来了，下面一章我们讲图层管理，把这些画面管理起来，相互作用，激活状态等等。
