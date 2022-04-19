@@ -227,7 +227,6 @@ int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 
 /* sheet.c 图层管理*/
 #define MAX_SHEETS  256
-#define SHEET_USE   1
 
 // 透明图层
 struct SHEET {
@@ -236,7 +235,7 @@ struct SHEET {
 	vx0, vy0,           // 位置坐标，v(VRAM)
 	col_inv,            // 透明色色号
 	height,             // 图层高度(指所在的图层数吧)
-	flags;              // 设定信息, 0x20表示图层是否需要光标，0x10表示窗口是否是应用程序,0x01表示是否自动关闭
+	flags;              // 设定信息, 0x20表示图层是否需要光标，0x10表示窗口是否是应用程序, 0x01表示是否自动关闭
 	struct SHTCTL* ctl;
 	struct TASK* task;  // 所属的task
 };
