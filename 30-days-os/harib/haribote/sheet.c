@@ -57,7 +57,7 @@ void sheet_setbuf(struct SHEET* sht, unsigned char* buf, int xsize, int ysize, i
 
 void sheet_updown(struct SHEET* sht, int height) {
 	struct SHTCTL* ctl = sht->ctl;
-	int h, old = sht->height; // 存储射之前的高度信息
+	int h, old = sht->height; // 存储变化之前的高度信息
 	
 	// 如果指定的高度过高或过低，进行修正
 	if (height > ctl->top + 1) {
