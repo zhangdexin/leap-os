@@ -143,6 +143,21 @@ void sheet_setbuf(struct SHEET* sht, unsigned char* buf, int xsize, int ysize, i
 ```
 代码比较简单，sheet_alloc就是从SHTCTL的sheets0中找一个未被使用的图层拿出来，标记为使用返回给调用者，sheet_setbuf仅仅是将buf，长宽，透明颜色赋值给图层。
 
+最后我们看下最后使用完之后释放一个图层：
+```c
+// sheet.c
+
+// 释放sht
+void sheet_free(struct SHEET* sht) {
+	if (sht->height >= 0) {
+		sheet_updown(sht, -1); // 显示状态下，设定为隐藏
+	}
+	
+	sht->flags = 0;
+}
+```
+很简单的代码，就是把高度设置为-1，图层移动到隐藏位置，标志设置为未使用。
+
 ### 图层的管理
 #### 图层绘制
 图层的各个管理操作包括，图层的移动，层级上的向上或者向下，如何显示等。
@@ -442,3 +457,108 @@ void sheet_updown(struct SHEET* sht, int height) {
 }
 ```
 参数中height就是要将该图层设定为哪一层。
+代码逻辑首先调整height（比top高说明新增加的图层），然后调整后的高度和之前高度对比，更新ctl->sheets这个数组，我们前边讲到sheets这个数组是按照顺序存放图层，那么一个图层的高度发生变化，原来高度和目的高度之间的图层都需要调整，然后还要刷新这个图层全部的区域的图像。
+
+### 图层管理应用
+简单举几个例子来看看有了图层管理的好处，我们上一章讲了画出来一个窗口，我们看下如何修改标题颜色：
+```c
+// sheet.c
+
+void change_wtitle8(struct SHEET *sht, char act)
+{
+	int x, y, xsize = sht->bxsize;
+	char c, tc_new, tbc_new, tc_old, tbc_old, *buf = sht->buf;
+	if (act != 0) {
+		tc_new  = COL8_FFFFFF;
+		tbc_new = COL8_000084;
+		tc_old  = COL8_C6C6C6;
+		tbc_old = COL8_848484;
+	} else {
+		tc_new  = COL8_C6C6C6;
+		tbc_new = COL8_848484;
+		tc_old  = COL8_FFFFFF;
+		tbc_old = COL8_000084;
+	}
+
+	for (y = 3; y <= 20; y++) {
+		for (x = 3; x <= xsize - 4; x++) {
+			c = buf[y * xsize + x];
+			if (c == tc_old && x <= xsize - 22) {
+				c = tc_new;
+			} else if (c == tbc_old) {
+				c = tbc_new;
+			}
+			buf[y * xsize + x] = c;
+		}
+	}
+	
+	sheet_refresh(sht, 3, 3, xsize, 21);
+	return;
+}
+```
+首先根据图层获取到缓冲区，这个图层应该是存放了整个窗口的颜色信息，然后根据act值（是否激活窗口）来获取到颜色值，然后设置给缓冲区。```sheet_refresh```这里正是我们要看的，传递图层及要更新的区域，就会把buf的值重新刷新到显存中。
+再来看一个例子：
+```c
+// sheet.c
+
+// l指字符长度
+void putfonts8_asc_sht(struct SHEET* sht, int x, int y, int c, int b, char* s, int l) {
+	struct TASK* task = task_now();
+	boxfill8(sht->buf, sht->bxsize, b, x, y, x + l * 8 - 1, y + 15);
+
+	if (task->langmode != 0 && task->langbyte1 != 0) { // 全角字符渲染
+		// ...(略)
+	}
+	else {
+		putfonts8_asc(sht->buf, sht->bxsize, x, y, c, s);
+		sheet_refresh(sht, x, y, x + l * 8, y + 16);
+	}	
+}
+```
+这个函数主要功能是在指定的图层的相应位置写文字，b表示背景颜色，c表示文字颜色，s就是要写文字的字符串，l是指整个字符串的长度。
+首先使用boxfill8把背景设置颜色，由于一个字符8位宽，设置位15高，故背景的右下角坐标为（x + l * 8 - 1, y + 15）
+然后就是在sht->buf中的指定位置写入文字，```putfonts8_asc```我们上一节讲到过，忘了的话可以翻回去看下。
+最后再次使用sheet_refresh刷新相对于sht的（x,y）到（x + l * 8, y + 16）这块区域。
+
+### 回到bootpack.c
+上一章和这一章我们讲解了图像如何显示及图层如何管理的，那我们有了这些基础我们就再次回到我们bootpack.c中，沿着主线继续向下看：
+```c
+// bootpack.c
+void HariMain(void)
+{
+    // ...(略)
+
+	// background
+	sht_back = sheet_alloc(shtctl);
+	buf_back = (unsigned char *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1); //没有透明色
+	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
+
+	/* sht_cons */
+	key_win = open_console(shtctl, memtotal);
+
+	// sht_mouse
+	sht_mouse = sheet_alloc(shtctl);
+	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); // 透明色号99
+	init_mouse_cursor8(buf_mouse, 99);
+	mx = (binfo->scrnx - 16) / 2; 
+	my = (binfo->scrny - 28 - 16) / 2;
+
+	// 调整图层
+	sheet_slide(sht_back, 0, 0);
+	sheet_slide(key_win, 32, 4);
+	sheet_slide(sht_mouse, mx, my);
+	
+	sheet_updown(sht_back, 0);
+	sheet_updown(key_win, 1);
+	sheet_updown(sht_mouse, 2);
+
+    // ...(略)
+}
+```
+我们就顺一下逻辑，首先作者是创建了背景图层（桌面），key_win这个是创建了一个窗口的图层（后边会讲到），还有一个鼠标的图层。鼠标的位置设定在稍微靠中心一点的位置上，然后我们让桌面图层移动到(0,0)位置，key_win移动到(32,4)位置处，鼠标图层移动(mx,my)处。让桌面位于最下层，key_win在中间一层，鼠标在最上层。
+然后看下效果：
+[图]
+
+### 总结
+本章我们讲解了关于图层是如何管理的，我们使用SHTCTL来管理所有的图层，每个图层的数据结构就是SHEET。SHTCTL的结构中存放了所有图层，使用时分配即可，每个图层中都有一个buf(缓冲区)来存放这个图层的图像数据，当需要渲染到显存时，就会将这个buf写入到显存的指定位置。刷新图层需要考虑遮盖的情况，我们使用map这个变量来存放在整个显存中每个像素点所在的图层。然后就可以实现对图层的移动，上下层调整等操作。
