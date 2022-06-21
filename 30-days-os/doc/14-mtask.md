@@ -36,12 +36,12 @@ TSS是cpu已经规定好了，不过需要操作系统来将提给内存位置�
 我们看到TSS结构中有一个字段表示的是'LDT Segment Selector'，那么这个字段指向哪里呢，他其实是保存是当前任务的LDT段描述符的选择子。那么LDT又是什么呢？<br>
 我们看到LDT其实想到GDT，不过LDT是相当于每个任务私有段。举个例子，有一个用户进程（任务），他的数据段和代码段肯定不是放在GDT中，他就是放到LDT里。那么执行这个应用程序的时候就会去LDT中取指令执行。LDT的段描述符也需要放到GDT中。<br>
 这个整体的结构我们用一个图来表示下，大家就知道了：<br>
-[图]
+<img src="https://user-images.githubusercontent.com/22785392/174802688-388c0eee-965a-4e1e-8a7c-fa438a64d79a.png" width="80%" height="%80" />
 <br>
 如图所示，GDT中存放LDT的段描述符，LDT段描述符指向local描述符表，这个描述符表也是存放段描述符，不过存放是当前任务的数据，一般也只是数据段和代码段。<br>
 关于LDT的段描述符,我们要注意的点是S位为0(系统段),type为0010就能表示这个段是LDT段.<br>
 图中也可以看到cpu通过LDTR（Local Descriptor Table Register）来找到当前任务的LDT段描述符。我们然后再来看下LDTR的结构:<br>
-[图]
+<img src="https://user-images.githubusercontent.com/22785392/174802922-a9894ff1-0c5c-48e2-9b98-35d4e9efb6d2.png" width="60%" height="%60" />
 <br>
 和TSS的寄存器TR类似，都是由选择子和缓冲器组成。功能也和TR类似，去找LDT的段描述符，再进一步去找到当前任务下的数据.
 这里要说一下的是,cpu怎么知道去GDT去找数据还是去LDT中去找数据呢,实际也还是通过选择子去寻找的.<br>
