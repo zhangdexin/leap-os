@@ -154,10 +154,10 @@ void inthandler27(int *esp);
 
 
 /* mt_task.c 多任务 */
-#define MAX_TASKS  1000 // 最大任务数量
-#define TASK_GDT0  3     // 定义从GDT的几号
-#define MAX_TASKS_LV 100
-#define MAX_TASKLEVELS 10
+#define MAX_TASKS  1000   // 最大任务数量
+#define TASK_GDT0  3      // 定义从GDT的几号
+#define MAX_TASKS_LV 100  // 一个level的task个数
+#define MAX_TASKLEVELS 10 // 最多可以有多少个level
 
 // 任务状态段（task status segment）
 struct TSS32 {
@@ -184,7 +184,7 @@ struct TASK {
 
 // TASKLEVEL表示任务运行的层级，优先级上更加细粒度的划分，0优先级最高，处于level0的任务最先运行
 struct TASKLEVEL {
-	int running; /* 正在运行的数量 */
+	int running; /* 正在运行的任务数量 */
 	int now;     /* 当前运行的时哪个任务 */
 	struct TASK *tasks[MAX_TASKS_LV];
 };
