@@ -14,5 +14,4 @@
 [12.图像显示](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/12-graphic.md)<br/>
 [13.图层管理](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/13-sheets.md)<br>
 [14.多任务-1](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/14-mtask.md)<br>
-[14.多任务-1](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/15-mtask_2.md)<br>
-
+[15.多任务-2](https://github.com/zhangdexin/leap-os/blob/main/30-days-os/doc/15-mtask_2.md)<br>
