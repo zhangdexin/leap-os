@@ -79,6 +79,7 @@ void HariMain(void)
 其实我们代码运行到这里的时候还没有task这个概念，这些代码都是让BIOS交由操作系统一股脑运行到这里，我们这里的task_a就是当前运行的任务，是通过task_init这个函数来初始化的。
 task_init这个函数里边做了一些初始化TASKCTL等等一系列操作，设置GDT段描述符等，然后初始化第一个task作为当前的task，进行了一些赋值后返回回来，具体看一下：
 ```c
+// mtask.c
 struct TASK* task_init(struct MEMMAN* memman) {
     int i;
 	struct TASK *task, *idle;
@@ -126,6 +127,7 @@ struct TASK* task_init(struct MEMMAN* memman) {
 然后调用task_alloc来分配了一个task，task_alloc中无非也是做一些task的初始化的状态，分配一个还未用到的task。task->flags默认是0，1表示使用中（包括休眠）但是还未运行，2表示正在运行。那么这里设置为2其实就是我们要返回的task。priority优先级设定为2。我们之前有讲到timer的触发，其中有一个timer时task_timer，这个timer表示每个一段时间就要切换一次任务，避免一个任务长时间的占用cpu。这个优先级就是设定的时间间隔，我们时间间隔的单位时10ms，这里不清楚的可以去看11章，2表示20ms后切换到别的task，也就是说这个task可以在cpu上运行20ms。那么就是设定的priority越大，运行的时间越长，表示优先级越高。这个task的level设定是0档，也就是最先运行的那一档。task_add表示放置在待运行的队列中。task_switchsub表示切换到某个level，我们最开始就是切换到level0。然后load_tr，加载TR寄存器为这个task的TSS的段描述符。创建了task_timer，设定下一次切换的时间是这个task的priority*10ms之后。先停一停往下看，有几个点要看下，其中我们task_alloc仅仅是初始化了tss，但是为什么没有给寄存器赋值？这里有一个load_tr的调用，我们说过通过jmp语句，cpu会自动去load tr寄存器，这里为什么会调用。这两个问题的原因其实答案是一个，那就是我们现在要用一个task表示当前运行的这个任务，我们既然已经运行到这里了，前边的寄存器肯定也已经设定好了，所以也不需要为tss设定寄存器的值了。那么在切换的时候cpu会将当前的task的寄存器的值写入到tss中，这里也就是说切换下一个任务的时候，目前的这个task自然就有值了。不过得有一个前提就是cpu得能够找到旧的这个task的tss，这也就是我们需要手动去load_tr的原因了，其实做load_tr和无需赋tss的值都是因为当前的任务是最特殊的，是从通电运行到这里才需要引入task。<br>
 然后看又分配了一个idle的task，申请以下栈空间用esp指向，ip指向task_idle函数的地址，表示如果切换到idle的task时是调用这个函数，他的代码段同样和主任务一样指向2号段选择子，其他的寄存器指向1号段选择子数据段选择子，大家到第6章其实可以看到我们数据段选择子其实从全部的内存空间都包含的，基址也是0，也就是说可访问到全部的内存空间。然后使用task_run函数加入到待运行的队列，并指定level和优先级。这里的level算是最后一个层级，也就是最后才会运行。优先级是1,也不是很大。然后看下task_idle这个函数做了啥：
 ```c
+// mtask.c
 void task_idle() {
 	for (;;) {
 		io_hlt();
@@ -139,6 +141,7 @@ void task_idle() {
 #### 多任务的操作
 我们在上边初始化的时候，谈到了几个关于task的相关操作，比如说task_alloc,task_run等等。我们这里就把关于task的所有相关操作过一遍，关注一下里边的实现。
 ```c
+// mtask.c
 struct TASK* task_alloc() {
     int i;
 	struct TASK *task;
@@ -169,6 +172,8 @@ struct TASK* task_alloc() {
 我们知道最开始的时候我们在taskctl->tasks0这个结构中申请了全部的task的空间，我们task_alloc就是从这些里拿出一个分配给调用者。可以看到分配一个task后，设定他的flags为1表示使用状态。eflages的寄存器为0x00000202，这里仅仅是设定IF（Interrupt enable flag）为1，表示可以被中断。其他寄存器设定为0，这里iomap我们不会用到也不展开将，按照作者的代码直接赋值0x40000000好了。<br>
 <br>
 ```c
+// mtask.c
+
 // 返回正在运行的任务
 struct TASK* task_now() {
 	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
@@ -178,6 +183,8 @@ struct TASK* task_now() {
 这个函数表示从结构(taskctl)中返回哪个task正在运行。先找到当前的level，从对应level的task队列中拿到正在运行task。<br>
 
 ```c
+// mtask.c
+
 // 添加一个任务
 void task_add(struct TASK *task) {
 	struct TASKLEVEL *tl = &taskctl->level[task->level];
@@ -190,6 +197,8 @@ void task_add(struct TASK *task) {
 这里表示向结构中添加一个任务，首先获取到这个task的level，找到对应的队列加入其中。同时变更要运行的任务数（running），flags置为2.
 
 ```c
+// mtask.c
+
 // 删除一个任务
 void task_remove(struct TASK *task) {
 	int i;
@@ -222,6 +231,8 @@ void task_remove(struct TASK *task) {
 该函数表示从结构中删除一个特定的任务，同样先找到这个task的位置i，如果i小于正在运行的task的位置now，更正now的指向（减1），然后将flags置为1休眠，然后统一后一个任务覆盖前一个任务。总结下就是将该任务从待运行队列中移除，并设定为休眠状态，关于什么时候清楚为未使用（flags为0）状态，后边用到我们再说。<br>
 
 ```c
+// mtask.c
+
 void task_run(struct TASK* task, int level, int priority) {
 	if (level < 0) {
 		level = task->level; // 不改变level
