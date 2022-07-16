@@ -76,6 +76,8 @@ void task_switch() {
 task_switch这个函数首先找到当前运行的level,及当前task。然后将now加1，也就是找下一个同level的task，然后判断是否需要切换level，到task_switchsub函数中看是否需要切换level，如果需要切换，就会得到最新的level对象task队列（tl），然后拿到下一个task赋值给new_task，然后根据这个最新的task的优先级继续设定定时器，然后通过farjmp来进行任务切换。<br>
 然后我们再看下切换level的实现：
 ```c
+// mtask.c
+
 // 切换到某个level
 void task_switchsub() {
 	int i;
@@ -104,5 +106,47 @@ _farjmp:		; void farjmp(int eip, int cs);
 		RET
 ```
 根据我们第14章讲解的关于任务做切换的几种方式，作者这里使用便是JMP的形式，jmp到目标任务的tss的选择子。就实现了任务的切换，然后当前的任务的寄存器等信息同时也会被cpu保存在当前任务的对应的tss结构的指向的内存中。
+> ‘JMP FAR’是win汇编的一个写法，主要是用在段间跳转。其他还有短跳转，偏移跳转，直接指定地址跳转，大家可以去学习一下，我们碰到也会讲
+
+<br>
+还有一个点我们要说，上边讲到了task的切换，我们也可以让task置于睡眠状态。这里的让task置于睡眠，也就是说把它切换出cpu，直到某一个时刻把他激活。
+
+```c
+// mtask.c
+void task_sleep(struct TASK* task) {
+	struct TASK *now_task;
+	if (task->flags == 2) { /* 如果处于活动状态 */
+		now_task = task_now();
+		task_remove(task); /* 移除task */
+		if (task == now_task) {
+			/* 让自己休眠时，进行任务切换 */
+			task_switchsub();
+			now_task = task_now(); /* 获取当前任务 */
+			farjmp(0, now_task->sel);
+		}
+	}
+	return;
+}
+```
+代码也不是很复杂，flag=2表示这个tasl在待运行的队列中（等待运行或者正在运行），flag=1表示task不在待运行队列，自然时间片到了切换任务也轮不到它，也就是我们所说的睡眠。flag=0表示task这块资源释放并回归到了taskctl中，处于未使用的状态了。<br>
+然后我们看下代码，首先判断是否处于活动状态，因为如果不是处于活动状态，自然就是睡眠状态或者未使用状态，没必要处理了。移除掉指定的task，当前运行的如果是指定的task，那么就需要切换成别的task。因为我们有一个idle_task，所以待切换的task队列肯定有task存在。<br><br>
+那么我们让一个睡眠之后，如何激活它呢，这个其实在前面我们有遇到了, 我们再来看一遍，task还是由中断触发的，
+```c
+// fifo.c
+
+int fifo32_put(struct FIFO32 *fifo, int data)
+/* 向FIFO发送数据保存 */
+{
+	// ...(略)
+	if (fifo->task != 0) {
+		if (fifo->task->flags != 2) { // 不处于活动状态
+			task_run(fifo->task, -1, 0); // 唤醒任务，level和priority不变
+		}
+	}
+
+	return 0;
+}
+```
+我们上一章有说到task会和一个fifo队列绑定起来，fifo队列就是用来接收发向这个task的中断信息，put到fifo中，进而激活task。后边我们讲到输入输出的的中断，再来完整梳理一遍。现在我们只需要知道，如果键盘或者鼠标中断到来就会到task的fifo中。如果task处于睡眠状态，使用task_run让task重新运行。
 
 ### 系统中如何应用
