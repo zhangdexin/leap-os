@@ -32,7 +32,7 @@ void enable_mouse(struct FIFO32* fifo, int data0, struct MOUSE_DEC *mdec)
 	io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
 	
 	/* 如果往键盘控制电路送指令0xd4,下一个数据会自动发送给鼠标，用以激活
-	   鼠标会返回CPU一个ACK,即0cfa.
+	   鼠标会返回CPU一个ACK,即0xfa.
 	*/
 	mdec->phase = 0; /* 等待0xfa阶段 */
 	return;
